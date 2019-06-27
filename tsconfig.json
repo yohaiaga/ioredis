@@ -4,13 +4,12 @@
     "allowJs": true,
     "target": "es6",
     "lib": ["es6"],
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
     "moduleResolution": "node",
     "types": ["node", "mocha"],
     "typeRoots": ["node_modules/@types"],
     "module": "commonjs"
   },
-  "include": [
-    "./lib/**/*"
-    ]
+  "include": ["./lib/**/*", "./bin/**/*.ts"]
 }
-
