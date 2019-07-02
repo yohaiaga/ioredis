@@ -1,5 +1,6 @@
 import { NodeRole } from "./util";
 import { lookup } from "dns";
+import { ICommanderOptions } from "../CommanderOptions";
 
 export type DNSLookupFunction = (
   hostname: string,
@@ -19,7 +20,7 @@ export interface INatMap {
  * @export
  * @interface IClusterOptions
  */
-export interface IClusterOptions {
+export interface IInternalClusterOptions {
   /**
    * See "Quick Start" section.
    *
@@ -132,7 +133,11 @@ export interface IClusterOptions {
   natMap?: INatMap;
 }
 
-export const DEFAULT_CLUSTER_OPTIONS: IClusterOptions = {
+export interface IClusterOptions
+  extends IInternalClusterOptions,
+    ICommanderOptions {}
+
+export const DEFAULT_CLUSTER_OPTIONS: IInternalClusterOptions = {
   clusterRetryStrategy: times => Math.min(100 + times * 2, 2000),
   enableOfflineQueue: true,
   enableReadyCheck: true,

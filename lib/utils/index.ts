@@ -1,5 +1,5 @@
 import { parse as urllibParse } from "url";
-import { defaults, noop, flatten } from "./lodash";
+import { noop, flatten } from "./lodash";
 import Debug from "./debug";
 
 /**
@@ -111,9 +111,13 @@ export function wrapMultiResult(arr) {
  * ```
  * @private
  */
-export function isInt(value) {
+export function isInt(value: any): boolean {
   var x = parseFloat(value);
   return !isNaN(value) && (x | 0) === x;
+}
+
+export function toInt(value: any): number {
+  return parseInt(value, 10);
 }
 
 /**
@@ -241,21 +245,21 @@ export function optimizeErrorStack(error, friendlyStack, filterPath) {
 /**
  * Parse the redis protocol url
  *
- * @param {string} url - the redis protocol url
+ * @param url - The redis protocol url
  * @return {Object}
  */
-export function parseURL(url) {
-  if (isInt(url)) {
+export function parseURL(url: string | number): { [key: string]: any } {
+  if (typeof url === "number" || isInt(url)) {
     return { port: url };
   }
-  var parsed = urllibParse(url, true, true);
+  let parsed = urllibParse(url, true, true);
 
   if (!parsed.slashes && url[0] !== "/") {
     url = "//" + url;
     parsed = urllibParse(url, true, true);
   }
 
-  var result: any = {};
+  const result: any = {};
   if (parsed.auth) {
     result.password = parsed.auth.split(":")[1];
   }
@@ -274,9 +278,11 @@ export function parseURL(url) {
   if (parsed.port) {
     result.port = parsed.port;
   }
-  defaults(result, parsed.query);
 
-  return result;
+  return {
+    ...parsed.query,
+    ...result
+  };
 }
 
 /**
@@ -335,4 +341,4 @@ export function zipMap<K, V>(keys: K[], values: V[]): Map<K, V> {
   return map;
 }
 
-export { Debug, defaults, noop, flatten };
+export { Debug, noop, flatten };

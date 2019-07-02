@@ -1,11 +1,12 @@
 import { createConnection } from "net";
-import { INatMap } from "../../cluster/ClusterOptions";
+import { INatMap } from "../../../Cluster/ClusterOptions";
 import {
   CONNECTION_CLOSED_ERROR_MSG,
   packObject,
   sample,
-  Debug
-} from "../../utils";
+  Debug,
+  noop
+} from "../../../../utils";
 import { connect as createTLSConnection, SecureContextOptions } from "tls";
 import {
   ITcpConnectionOptions,
@@ -13,10 +14,11 @@ import {
 } from "../StandaloneConnector";
 import SentinelIterator from "./SentinelIterator";
 import { ISentinelAddress } from "./types";
-import AbstractConnector, { ErrorEmitter } from "../AbstractConnector";
-import { NetStream, CallbackFunction } from "../../types";
-import * as PromiseContainer from "../../promiseContainer";
-import Redis from "../../redis";
+import AbstractConnector from "../AbstractConnector";
+import { CallbackFunction } from "../../../../types";
+import * as PromiseContainer from "../../../../promiseContainer";
+import Redis from "../..";
+import { ErrorEmitter, NetStream } from "../types";
 
 const debug = Debug("SentinelConnector");
 
@@ -51,7 +53,7 @@ export default class SentinelConnector extends AbstractConnector {
   private retryAttempts: number;
   protected sentinelIterator: SentinelIterator;
 
-  constructor(protected options: ISentinelConnectionOptions) {
+  public constructor(protected options: ISentinelConnectionOptions) {
     super();
 
     if (!this.options.sentinels.length) {
@@ -267,7 +269,7 @@ export default class SentinelConnector extends AbstractConnector {
     });
   }
 
-  sentinelNatResolve(item: ISentinelAddress) {
+  private sentinelNatResolve(item: ISentinelAddress) {
     if (!item || !this.options.natMap) return item;
 
     return this.options.natMap[`${item.host}:${item.port}`] || item;
@@ -289,8 +291,7 @@ export default class SentinelConnector extends AbstractConnector {
       tls: this.options.sentinelTLS,
       retryStrategy: null,
       enableReadyCheck: false,
-      connectTimeout: this.options.connectTimeout,
-      dropBufferSupport: true
+      connectTimeout: this.options.connectTimeout
     });
 
     // ignore the errors since resolve* methods will handle them
@@ -369,5 +370,3 @@ function addressResponseToAddress(
 ): ISentinelAddress {
   return { host: input.ip, port: Number(input.port) };
 }
-
-function noop(): void {}

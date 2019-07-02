@@ -1,11 +1,9 @@
-import { Socket } from "net";
-import { TLSSocket } from "tls";
+import { NetStream } from "./Commander/Redis/connectors/types";
 
 export type CallbackFunction<T = any> = (
   err?: NodeJS.ErrnoException | null,
   result?: T
 ) => void;
-export type NetStream = Socket | TLSSocket;
 
 export type CommandParameter = string | Buffer | number | any[];
 export interface ICommand {
@@ -13,6 +11,8 @@ export interface ICommand {
   args: CommandParameter[];
   resolve(result: any): void;
   reject(error: Error): void;
+  promise: Promise<any>;
+  toWritable(): string | Buffer;
 }
 
 export interface ICommandItem {
@@ -20,3 +20,13 @@ export interface ICommandItem {
   stream: NetStream;
   select: number;
 }
+
+export type ConnectionStatus =
+  | "end"
+  | "close"
+  | "wait"
+  | "connecting"
+  | "connect"
+  | "ready"
+  | "reconnecting"
+  | "disconnecting";

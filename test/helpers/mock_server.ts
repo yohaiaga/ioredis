@@ -35,9 +35,9 @@ export function getConnectionName(socket: Socket): string | undefined {
 export type MockServerHandler = (reply: any, socket: Socket) => any;
 
 export default class MockServer extends EventEmitter {
-  static REDIS_OK = "+OK";
+  public static REDIS_OK = "+OK";
 
-  static raw<T>(data: T): { [RAW_DATA_KEY]: T } {
+  public static raw<T>(data: T): { [RAW_DATA_KEY]: T } {
     return {
       [RAW_DATA_KEY]: data
     };
@@ -46,7 +46,7 @@ export default class MockServer extends EventEmitter {
   private clients: Socket[] = [];
   private socket?: Server;
 
-  constructor(
+  public constructor(
     private port: number,
     public handler?: MockServerHandler,
     private slotTable?: any
@@ -56,7 +56,7 @@ export default class MockServer extends EventEmitter {
     createdMockServers.push(this);
   }
 
-  connect() {
+  public connect() {
     this.socket = createServer(c => {
       var clientIndex = this.clients.push(c) - 1;
       process.nextTick(() => {
@@ -104,12 +104,12 @@ export default class MockServer extends EventEmitter {
     enableDestroy(this.socket);
   }
 
-  disconnect(callback?: Function) {
+  public disconnect(callback?: Function) {
     // @ts-ignore
     this.socket.destroy(callback);
   }
 
-  broadcast(data: any) {
+  public broadcast(data: any) {
     this.clients
       .filter(c => c)
       .forEach(client => {
@@ -117,7 +117,7 @@ export default class MockServer extends EventEmitter {
       });
   }
 
-  write(c: Socket, data: any) {
+  public write(c: Socket, data: any) {
     if (c.writable) {
       c.write(convert("", data));
     }
@@ -151,7 +151,7 @@ export default class MockServer extends EventEmitter {
     }
   }
 
-  findClientByName(name: string): Socket | undefined {
+  public findClientByName(name: string): Socket | undefined {
     return this.clients
       .filter(c => c)
       .find(client => {

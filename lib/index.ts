@@ -1,19 +1,25 @@
-exports = module.exports = require("./redis").default;
+import Redis from "./Commander/Redis";
 
-export { default } from "./redis";
-export { default as Cluster } from "./cluster";
+exports = module.exports = Redis;
+
+export default Redis;
+export { default as Cluster } from "./Commander/Cluster";
 export { default as Command } from "./command";
 export { default as ScanStream } from "./ScanStream";
 export { default as Pipeline } from "./pipeline";
-export { default as AbstractConnector } from "./connectors/AbstractConnector";
+export {
+  default as AbstractConnector
+} from "./Commander/Redis/connectors/AbstractConnector";
 export {
   default as SentinelConnector,
   SentinelIterator
-} from "./connectors/SentinelConnector";
+} from "./Commander/Redis/connectors/SentinelConnector";
 
 // Type Exports
-export { ISentinelAddress } from "./connectors/SentinelConnector";
-export { IRedisOptions } from "./redis/RedisOptions";
+export {
+  ISentinelAddress
+} from "./Commander/Redis/connectors/SentinelConnector";
+export { IRedisOptions } from "./Commander/Redis/RedisOptions";
 
 // No TS typings
 export const ReplyError = require("redis-errors").ReplyError;

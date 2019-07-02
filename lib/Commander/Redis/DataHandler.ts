@@ -1,10 +1,12 @@
-import { NetStream, ICommandItem, ICommand } from "./types";
 import Deque = require("denque");
 import { EventEmitter } from "events";
-import Command from "./command";
-import { Debug } from "./utils";
 import * as RedisParser from "redis-parser";
-import SubscriptionSet from "./SubscriptionSet";
+import { NetStream } from "./connectors/types";
+import { Debug } from "../../utils";
+import { ICommandItem, ICommand } from "../../types";
+import { ICondition } from "./types";
+import SubscriptionSet from "../../SubscriptionSet";
+import { Command } from "../..";
 
 const debug = Debug("dataHandler");
 
@@ -13,12 +15,6 @@ type ReplyData = string | Buffer | number | Array<string | Buffer | number>;
 export interface IDataHandlerOptions {
   stringNumbers: boolean;
   dropBufferSupport: boolean;
-}
-
-interface ICondition {
-  select: number;
-  auth: string;
-  subscriber: false | SubscriptionSet;
 }
 
 interface IDataHandledable extends EventEmitter {
@@ -38,7 +34,10 @@ interface IParserOptions {
 }
 
 export default class DataHandler {
-  constructor(private redis: IDataHandledable, parserOptions: IParserOptions) {
+  public constructor(
+    private redis: IDataHandledable,
+    parserOptions: IParserOptions
+  ) {
     const parser = new RedisParser({
       stringNumbers: parserOptions.stringNumbers,
       returnBuffers: !parserOptions.dropBufferSupport,

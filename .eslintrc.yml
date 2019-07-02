@@ -15,10 +15,13 @@ env:
 
 rules:
   no-console: 0
-  "@typescript-eslint/no-var-requires": 0
-  "@typescript-eslint/explicit-function-return-type": 0
+  # The standard ESLint `no-dupe-class-members` rule will report false
+  # positives for overloaded TypeScript class methods. This rule is safe to
+  # disable because actual duplicate class members will be caught by the
+  # TypeScript compiler.
+  "no-dupe-class-members": 0
+
   "@typescript-eslint/no-explicit-any": 0
-  "@typescript-eslint/explicit-member-accessibility": 0
   "@typescript-eslint/no-parameter-properties": 0
   "@typescript-eslint/no-use-before-define": 0
   "@typescript-eslint/array-type":
@@ -35,3 +38,5 @@ overrides:
   - files: ["{test,benchmarks}/**/*"]
     env:
       mocha: true
+    rules:
+      "@typescript-eslint/explicit-function-return-type": 0

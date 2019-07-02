@@ -5,7 +5,7 @@ import { exists, hasFlag } from "redis-commands";
 import { generateMulti } from "cluster-key-slot";
 import * as PromiseContainer from "./promiseContainer";
 import { CallbackFunction } from "./types";
-import Commander from "./commander";
+import Commander from "./Commander";
 
 export default function Pipeline(redis) {
   Commander.call(this);

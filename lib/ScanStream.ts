@@ -25,11 +25,11 @@ export default class ScanStream extends Readable {
   private _redisCursor = "0";
   private _redisDrained = false;
 
-  constructor(private opt: IScanStreamOptions) {
+  public constructor(private opt: IScanStreamOptions) {
     super(opt);
   }
 
-  _read() {
+  public _read() {
     if (this._redisDrained) {
       this.push(null);
       return;
@@ -59,7 +59,7 @@ export default class ScanStream extends Readable {
     });
   }
 
-  close() {
+  public close() {
     this._redisDrained = true;
   }
 }

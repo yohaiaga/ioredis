@@ -14,14 +14,14 @@ export default class SentinelIterator
   implements Iterator<Partial<ISentinelAddress>> {
   private cursor: number = 0;
 
-  constructor(private sentinels: Array<Partial<ISentinelAddress>>) {}
+  public constructor(private sentinels: Array<Partial<ISentinelAddress>>) {}
 
-  next() {
+  public next() {
     const done = this.cursor >= this.sentinels.length;
     return { done, value: done ? undefined : this.sentinels[this.cursor++] };
   }
 
-  reset(moveCurrentEndpointToFirst: boolean): void {
+  public reset(moveCurrentEndpointToFirst: boolean): void {
     if (
       moveCurrentEndpointToFirst &&
       this.sentinels.length > 1 &&
@@ -32,7 +32,7 @@ export default class SentinelIterator
     this.cursor = 0;
   }
 
-  add(sentinel: ISentinelAddress): boolean {
+  public add(sentinel: ISentinelAddress): boolean {
     for (let i = 0; i < this.sentinels.length; i++) {
       if (isSentinelEql(sentinel, this.sentinels[i])) {
         return false;
@@ -43,7 +43,7 @@ export default class SentinelIterator
     return true;
   }
 
-  toString(): string {
+  public toString(): string {
     return `${JSON.stringify(this.sentinels)} @${this.cursor}`;
   }
 }

@@ -1,7 +1,8 @@
 import { EventEmitter } from "events";
-import { sample, Debug, noop, defaults } from "../utils";
-import { IRedisOptions, getNodeKey, NodeKey, NodeRole } from "./util";
-import Redis from "../redis";
+import { sample, Debug, noop } from "../../utils";
+import { getNodeKey, NodeKey, NodeRole } from "./util";
+import Redis from "../Redis";
+import { IRedisOptions } from "../Redis/RedisOptions";
 
 const debug = Debug("cluster:connectionPool");
 
@@ -17,7 +18,7 @@ export default class ConnectionPool extends EventEmitter {
 
   private specifiedOptions: { [key: string]: any } = {};
 
-  constructor(private redisOptions) {
+  public constructor(private redisOptions) {
     super();
   }
 
@@ -44,7 +45,10 @@ export default class ConnectionPool extends EventEmitter {
    * @returns {*}
    * @memberof ConnectionPool
    */
-  public findOrCreate(node: IRedisOptions, readOnly: boolean = false): any {
+  public findOrCreate(
+    node: Partial<IRedisOptions>,
+    readOnly: boolean = false
+  ): any {
     const key = getNodeKey(node);
     readOnly = Boolean(readOnly);
 
@@ -71,24 +75,20 @@ export default class ConnectionPool extends EventEmitter {
       }
     } else {
       debug("Connecting to %s as %s", key, readOnly ? "slave" : "master");
-      redis = new Redis(
-        defaults(
-          {
-            // Never try to reconnect when a node is lose,
-            // instead, waiting for a `MOVED` error and
-            // fetch the slots again.
-            retryStrategy: null,
-            // Offline queue should be enabled so that
-            // we don't need to wait for the `ready` event
-            // before sending commands to the node.
-            enableOfflineQueue: true,
-            readOnly: readOnly
-          },
-          node,
-          this.redisOptions,
-          { lazyConnect: true }
-        )
-      );
+      redis = new Redis({
+        lazyConnect: true,
+        ...this.redisOptions,
+        ...node,
+        // Never try to reconnect when a node is lose,
+        // instead, waiting for a `MOVED` error and
+        // fetch the slots again.
+        retryStrategy: null,
+        // Offline queue should be enabled so that
+        // we don't need to wait for the `ready` event
+        // before sending commands to the node.
+        enableOfflineQueue: true,
+        readOnly: readOnly
+      });
       this.nodes.all[key] = redis;
       this.nodes[readOnly ? "slave" : "master"][key] = redis;
 

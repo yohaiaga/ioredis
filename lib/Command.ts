@@ -12,7 +12,7 @@ import { flatten } from "./utils/lodash";
 import { get as getPromise } from "./promiseContainer";
 import { CallbackFunction, ICommand, CommandParameter } from "./types";
 
-interface ICommandOptions {
+export interface ICommandOptions {
   /**
    * Set the encoding of the reply, by default buffer will be returned.
    *
@@ -166,7 +166,7 @@ export default class Command implements ICommand {
    * If omit, the response will be handled via Promise
    * @memberof Command
    */
-  constructor(
+  public constructor(
     public name: string,
     args: Array<
       string | Buffer | number | Array<string | Buffer | number | any[]>
@@ -310,7 +310,7 @@ export default class Command implements ICommand {
     return result;
   }
 
-  stringifyArguments(): void {
+  private stringifyArguments(): void {
     for (let i = 0; i < this.args.length; ++i) {
       const arg = this.args[i];
       if (!(arg instanceof Buffer) && typeof arg !== "string") {
@@ -398,8 +398,8 @@ Command.setReplyTransformer("hgetall", function(result) {
 });
 
 class MixedBuffers {
-  length = 0;
-  items = [];
+  private length = 0;
+  private items = [];
 
   public push(x: string | Buffer) {
     this.length += Buffer.byteLength(x);

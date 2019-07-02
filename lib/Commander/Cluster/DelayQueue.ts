@@ -1,4 +1,4 @@
-import { Debug } from "../utils";
+import { Debug } from "../../utils";
 import Deque = require("denque");
 
 const debug = Debug("delayqueue");

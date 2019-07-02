@@ -1,10 +1,8 @@
-import { EventEmitter } from "events";
-import ClusterAllFailedError from "../errors/ClusterAllFailedError";
-import { defaults, noop, Debug } from "../utils";
+import ClusterAllFailedError from "../../errors/ClusterAllFailedError";
+import { noop, Debug } from "../../utils";
 import ConnectionPool from "./ConnectionPool";
 import {
   NodeKey,
-  IRedisOptions,
   normalizeNodeOptions,
   NodeRole,
   getUniqueHostnamesFromOptions,
@@ -12,36 +10,31 @@ import {
 } from "./util";
 import ClusterSubscriber from "./ClusterSubscriber";
 import DelayQueue from "./DelayQueue";
-import ScanStream from "../ScanStream";
+import ScanStream from "../../ScanStream";
 import { AbortError, RedisError } from "redis-errors";
 import asCallback from "standard-as-callback";
-import * as PromiseContainer from "../promiseContainer";
-import { CallbackFunction } from "../types";
-import { IClusterOptions, DEFAULT_CLUSTER_OPTIONS } from "./ClusterOptions";
+import * as PromiseContainer from "../../promiseContainer";
+import { CallbackFunction, ConnectionStatus } from "../../types";
+import {
+  IClusterOptions,
+  DEFAULT_CLUSTER_OPTIONS,
+  IInternalClusterOptions
+} from "./ClusterOptions";
 import {
   sample,
   CONNECTION_CLOSED_ERROR_MSG,
   shuffle,
   timeout,
   zipMap
-} from "../utils";
+} from "../../utils";
 import * as commands from "redis-commands";
-import Command from "../command";
-import Redis from "../redis";
-import Commander from "../commander";
+import Command from "../../command";
+import Redis from "../Redis";
+import Commander from "..";
 import Deque = require("denque");
+import { IRedisOptions, IInternalRedisOptions } from "../Redis/RedisOptions";
 
 const debug = Debug("cluster");
-
-type ClusterStatus =
-  | "end"
-  | "close"
-  | "wait"
-  | "connecting"
-  | "connect"
-  | "ready"
-  | "reconnecting"
-  | "disconnecting";
 
 /**
  * Client for the official Redis Cluster
@@ -49,9 +42,8 @@ type ClusterStatus =
  * @class Cluster
  * @extends {EventEmitter}
  */
-class Cluster extends EventEmitter {
-  private options: IClusterOptions;
-  private startupNodes: Array<string | number | object>;
+class Cluster extends Commander {
+  private options: IInternalClusterOptions;
   private connectionPool: ConnectionPool;
   private slots: NodeKey[][] = [];
   private manuallyClosing: boolean;
@@ -61,7 +53,7 @@ class Cluster extends EventEmitter {
   private subscriber: ClusterSubscriber;
   private slotsTimer: NodeJS.Timer;
   private reconnectTimeout: NodeJS.Timer;
-  private status: ClusterStatus;
+  private status: ConnectionStatus;
   private isRefreshing: boolean = false;
 
   /**
@@ -69,29 +61,25 @@ class Cluster extends EventEmitter {
    * auto-incrementing. The purpose of this value is used for
    * discarding previous connect attampts when creating a new
    * connection.
-   *
-   * @private
-   * @type {number}
-   * @memberof Cluster
    */
   private connectionEpoch: number = 0;
 
   /**
    * Creates an instance of Cluster.
    *
-   * @param {(Array<string | number | object>)} startupNodes
-   * @param {IClusterOptions} [options={}]
-   * @memberof Cluster
+   * @param startupNodes
+   * @param options
    */
-  constructor(
-    startupNodes: Array<string | number | object>,
-    options: IClusterOptions = {}
+  public constructor(
+    private startupNodes: Array<string | number | object>,
+    options: Partial<IClusterOptions> = {}
   ) {
-    super();
-    Commander.call(this);
+    super(options);
 
-    this.startupNodes = startupNodes;
-    this.options = defaults({}, options, DEFAULT_CLUSTER_OPTIONS, this.options);
+    this.options = {
+      ...DEFAULT_CLUSTER_OPTIONS,
+      ...options
+    };
 
     // validate options
     if (
@@ -131,18 +119,18 @@ class Cluster extends EventEmitter {
     }
   }
 
-  resetOfflineQueue() {
+  private resetOfflineQueue() {
     this.offlineQueue = new Deque();
   }
 
-  clearNodesRefreshInterval() {
+  private clearNodesRefreshInterval() {
     if (this.slotsTimer) {
       clearTimeout(this.slotsTimer);
       this.slotsTimer = null;
     }
   }
 
-  resetNodesRefreshInterval() {
+  private resetNodesRefreshInterval() {
     if (this.slotsTimer) {
       return;
     }
@@ -162,9 +150,6 @@ class Cluster extends EventEmitter {
 
   /**
    * Connect to a cluster
-   *
-   * @returns {Promise<void>}
-   * @memberof Cluster
    */
   public connect(): Promise<void> {
     const Promise = PromiseContainer.get();
@@ -266,9 +251,6 @@ class Cluster extends EventEmitter {
 
   /**
    * Called when closed to check whether a reconnection should be made
-   *
-   * @private
-   * @memberof Cluster
    */
   private handleCloseEvent(reason?: Error): void {
     if (reason) {
@@ -306,8 +288,7 @@ class Cluster extends EventEmitter {
   /**
    * Disconnect from every node in the cluster.
    *
-   * @param {boolean} [reconnect=false]
-   * @memberof Cluster
+   * @param [reconnect=false]
    */
   public disconnect(reconnect: boolean = false) {
     const status = this.status;
@@ -337,7 +318,6 @@ class Cluster extends EventEmitter {
    *
    * @param {CallbackFunction<'OK'>} [callback]
    * @returns {Promise<'OK'>}
-   * @memberof Cluster
    */
   public quit(callback?: CallbackFunction<"OK">): Promise<"OK"> {
     const status = this.status;
@@ -388,9 +368,8 @@ class Cluster extends EventEmitter {
   /**
    * Get nodes with the specified role
    *
-   * @param {NodeRole} [role='all']
-   * @returns {any[]}
-   * @memberof Cluster
+   * @param role
+   * @returns Nodes
    */
   public nodes(role: NodeRole = "all"): any[] {
     if (role !== "all" && role !== "master" && role !== "slave") {
@@ -404,11 +383,9 @@ class Cluster extends EventEmitter {
   /**
    * Change cluster instance's status
    *
-   * @private
-   * @param {ClusterStatus} status
-   * @memberof Cluster
+   * @param status - New status.
    */
-  private setStatus(status: ClusterStatus): void {
+  private setStatus(status: ConnectionStatus): void {
     debug("status: %s -> %s", this.status || "[empty]", status);
     this.status = status;
     process.nextTick(() => {
@@ -419,9 +396,7 @@ class Cluster extends EventEmitter {
   /**
    * Refresh the slot cache
    *
-   * @private
    * @param {CallbackFunction} [callback]
-   * @memberof Cluster
    */
   private refreshSlotsCache(callback?: CallbackFunction<void>): void {
     if (this.isRefreshing) {
@@ -491,7 +466,7 @@ class Cluster extends EventEmitter {
     }
   }
 
-  executeOfflineCommands() {
+  private executeOfflineCommands() {
     if (this.offlineQueue.length) {
       debug("send %d commands in offline queue", this.offlineQueue.length);
       const offlineQueue = this.offlineQueue;
@@ -503,7 +478,9 @@ class Cluster extends EventEmitter {
     }
   }
 
-  natMapper(nodeKey: NodeKey | IRedisOptions): IRedisOptions {
+  private natMapper(
+    nodeKey: NodeKey | Partial<IInternalRedisOptions>
+  ): Partial<IInternalRedisOptions> {
     if (this.options.natMap && typeof this.options.natMap === "object") {
       const key =
         typeof nodeKey === "string"
@@ -520,7 +497,7 @@ class Cluster extends EventEmitter {
       : nodeKey;
   }
 
-  sendCommand(command, stream, node) {
+  private sendCommand(command, stream, node) {
     if (this.status === "wait") {
       this.connect().catch(noop);
     }
@@ -662,7 +639,7 @@ class Cluster extends EventEmitter {
     return command.promise;
   }
 
-  handleError(error, ttl, handlers) {
+  private handleError(error, ttl, handlers) {
     if (typeof ttl.value === "undefined") {
       ttl.value = this.options.maxRedirections;
     } else {
@@ -703,7 +680,7 @@ class Cluster extends EventEmitter {
     }
   }
 
-  getInfoFromNode(redis, callback) {
+  private getInfoFromNode(redis, callback) {
     if (!redis) {
       return callback(new Error("Node is disconnected"));
     }
@@ -777,7 +754,6 @@ class Cluster extends EventEmitter {
    * Check whether Cluster is able to process commands
    *
    * @param {Function} callback
-   * @private
    */
   private readyCheck(callback: CallbackFunction<void | "fail">): void {
     (this as any).cluster("info", function(err, res) {
@@ -861,12 +837,6 @@ class Cluster extends EventEmitter {
   }
 }
 
-Object.getOwnPropertyNames(Commander.prototype).forEach(name => {
-  if (!Cluster.prototype.hasOwnProperty(name)) {
-    Cluster.prototype[name] = Commander.prototype[name];
-  }
-});
-
 const scanCommands = [
   "sscan",
   "hscan",
@@ -877,17 +847,13 @@ const scanCommands = [
 ];
 scanCommands.forEach(command => {
   Cluster.prototype[command + "Stream"] = function(key, options) {
-    return new ScanStream(
-      defaults(
-        {
-          objectMode: true,
-          key: key,
-          redis: this,
-          command: command
-        },
-        options
-      )
-    );
+    return new ScanStream({
+      ...options,
+      command,
+      key,
+      objectMode: true,
+      redis: this
+    });
   };
 });
 

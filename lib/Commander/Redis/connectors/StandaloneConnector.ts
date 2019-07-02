@@ -1,14 +1,14 @@
 import { createConnection, TcpNetConnectOpts, IpcNetConnectOpts } from "net";
 import { connect as createTLSConnection, SecureContextOptions } from "tls";
-import { CONNECTION_CLOSED_ERROR_MSG } from "../utils";
-import AbstractConnector, { ErrorEmitter } from "./AbstractConnector";
-import * as PromiseContainer from "../promiseContainer";
-import { NetStream } from "../types";
+import { CONNECTION_CLOSED_ERROR_MSG } from "../../../utils";
+import AbstractConnector from "./AbstractConnector";
+import * as PromiseContainer from "../../../promiseContainer";
+import { ErrorEmitter, NetStream } from "./types";
 
 export function isIIpcConnectionOptions(
   value: any
 ): value is IIpcConnectionOptions {
-  return value.path;
+  return Boolean(value.path);
 }
 
 export interface ITcpConnectionOptions extends TcpNetConnectOpts {
@@ -20,7 +20,7 @@ export interface IIpcConnectionOptions extends IpcNetConnectOpts {
 }
 
 export default class StandaloneConnector extends AbstractConnector {
-  constructor(
+  public constructor(
     protected options: ITcpConnectionOptions | IIpcConnectionOptions
   ) {
     super();

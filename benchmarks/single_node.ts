@@ -1,6 +1,6 @@
 /* global suite set bench after */
 import { execSync } from "child_process";
-import Redis from "../lib/redis";
+import Redis from "../lib/Commander/Redis";
 
 console.log("==========================");
 console.log("redis: " + require("../package.json").version);

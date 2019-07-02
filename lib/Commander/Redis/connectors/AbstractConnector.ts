@@ -1,8 +1,6 @@
-import { NetStream } from "../types";
+import { IConnector, ErrorEmitter, NetStream } from "./types";
 
-export type ErrorEmitter = (type: string, err: Error) => void;
-
-export default abstract class AbstractConnector {
+export default abstract class AbstractConnector implements IConnector {
   protected connecting: boolean = false;
   protected stream: NetStream;
 

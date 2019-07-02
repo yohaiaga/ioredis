@@ -1,6 +1,6 @@
-import Redis from "../../lib/redis";
 import { expect } from "chai";
 import * as sinon from "sinon";
+import Redis from "../../lib";
 
 describe("monitor", function() {
   it("should receive commands", function(done) {

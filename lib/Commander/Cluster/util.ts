@@ -1,23 +1,19 @@
-import { parseURL } from "../utils";
+import { parseURL } from "../../utils";
 import { isIP } from "net";
+import { IRedisOptions, IInternalRedisOptions } from "../Redis/RedisOptions";
 
 export type NodeKey = string;
 export type NodeRole = "master" | "slave" | "all";
 
-export interface IRedisOptions {
-  port: number;
-  host: string;
-  password?: string;
-  [key: string]: any;
-}
-
-export function getNodeKey(node: IRedisOptions): NodeKey {
+export function getNodeKey(node: Partial<IInternalRedisOptions>): NodeKey {
   node.port = node.port || 6379;
   node.host = node.host || "127.0.0.1";
   return node.host + ":" + node.port;
 }
 
-export function nodeKeyToRedisOptions(nodeKey: NodeKey): IRedisOptions {
+export function nodeKeyToRedisOptions(
+  nodeKey: NodeKey
+): Partial<IInternalRedisOptions> {
   const portIndex = nodeKey.lastIndexOf(":");
   if (portIndex === -1) {
     throw new Error(`Invalid node key ${nodeKey}`);

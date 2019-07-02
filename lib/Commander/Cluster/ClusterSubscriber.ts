@@ -1,8 +1,8 @@
 import { EventEmitter } from "events";
 import ConnectionPool from "./ConnectionPool";
 import { getNodeKey } from "./util";
-import { sample, noop, Debug } from "../utils";
-import Redis from "../redis";
+import { sample, noop, Debug } from "../../utils";
+import Redis from "../Redis";
 
 const debug = Debug("cluster:subscriber");
 
@@ -13,7 +13,7 @@ export default class ClusterSubscriber {
   private subscriber: any = null;
   private lastActiveSubscriber: any;
 
-  constructor(
+  public constructor(
     private connectionPool: ConnectionPool,
     private emitter: EventEmitter
   ) {
@@ -37,7 +37,7 @@ export default class ClusterSubscriber {
     });
   }
 
-  getInstance(): any {
+  public getInstance(): any {
     return this.subscriber;
   }
 
@@ -130,13 +130,13 @@ export default class ClusterSubscriber {
     }
   }
 
-  start(): void {
+  public start(): void {
     this.started = true;
     this.selectSubscriber();
     debug("started");
   }
 
-  stop(): void {
+  public stop(): void {
     this.started = false;
     if (this.subscriber) {
       this.subscriber.disconnect();

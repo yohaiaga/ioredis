@@ -1,9 +1,9 @@
 "use strict";
 
-import Command from "../command";
-import { MaxRetriesPerRequestError } from "../errors";
-import { Debug, noop, CONNECTION_CLOSED_ERROR_MSG } from "../utils";
-import DataHandler from "../DataHandler";
+import Command from "../../command";
+import { MaxRetriesPerRequestError } from "../../errors";
+import { Debug, noop, CONNECTION_CLOSED_ERROR_MSG } from "../../utils";
+import DataHandler from "./DataHandler";
 
 const debug = Debug("connection");
 
