@@ -27,16 +27,20 @@ const items = flatten(
 function prefixWithSpaces(text: string, _: number): string {
   return text
     .split("\n")
-    .map(line => "  " + line)
+    .map(line => "    " + line)
     .join("\n");
 }
 
 const interfaceTemplate = `
-type CommandKey = string | Buffer | number
-type CommandPattern = string | Buffer
+import { CallbackFunction } from '../types';
 
-interface Commander {
-${items}
+export type CommandKey = string | Buffer | number
+export type CommandPattern = string | Buffer
+
+declare module './index' {
+  interface Commander {
+  ${items}
+  }
 }
 `;
 console.log(interfaceTemplate);

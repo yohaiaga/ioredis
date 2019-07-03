@@ -66,6 +66,7 @@ function resolveVariableNameConflict(args: ICommandArgument[]) {
   }
   const map = new Map<string, number>();
   function getNextName(name: string): string {
+    name = name === "arguments" ? "args" : name;
     let count = map.get(name) || 0;
     map.set(name, count + 1);
     if (count) {

@@ -143,10 +143,17 @@ export function getCommandDef(
             ? constantParameters.map(p => `${camelcase(p)}: "${p}"`).join(", ")
             : "";
         const vairablePart = defs.join(", ");
-        const parameters =
-          constantPart && vairablePart
-            ? constantPart + ", " + vairablePart
-            : constantPart + vairablePart;
+        const returnType = getReturnType(def.return, buffer);
+        let parameters = [
+          constantPart,
+          vairablePart,
+          `callback?: CallbackFunction<${returnType}>`
+        ]
+          .filter(a => a)
+          .join(", ");
+        if (parameters.indexOf("...") > -1) {
+          parameters = "...args: any[]";
+        }
         return `${camelcase(def.name)}${
           buffer ? "Buffer" : ""
         }(${parameters}): Promise<${getReturnType(def.return, buffer)}>;`;
@@ -178,5 +185,5 @@ function getFunctionMatrix(
       }
     }
   }
-  return matrix;
+  return matrix.length < 10 ? matrix : [["...args: any[]"]];
 }

@@ -1,7 +1,7 @@
 import { noop } from "../../utils/lodash";
 import Deque = require("denque");
 import Command from "../../command";
-import Commander from "..";
+import { Commander } from "..";
 import { isInt, CONNECTION_CLOSED_ERROR_MSG, Debug, toInt } from "../../utils";
 import asCallback from "standard-as-callback";
 import * as eventHandler from "./eventHandler";
@@ -330,7 +330,6 @@ class Redis extends Commander {
           this.condition.select !== item.select &&
           item.command.name !== "select"
         ) {
-          // @ts-ignore
           this.select(item.select);
         }
         this.sendCommand(item.command);
@@ -385,7 +384,6 @@ class Redis extends Commander {
   private _readyCheck(
     callback: CallbackFunction<{ [key: string]: any }>
   ): void {
-    // @ts-ignore
     this.info((err, res) => {
       if (err) {
         return callback(err);

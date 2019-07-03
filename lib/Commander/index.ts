@@ -7,6 +7,7 @@ import {
 } from "./utils";
 import { EventEmitter } from "events";
 import { ICommanderOptions } from "./CommanderOptions";
+import "./commands";
 
 /**
  * Commander
@@ -93,4 +94,4 @@ commandList.forEach(commandName => {
   );
 });
 
-export default Commander;
+export { Commander };
