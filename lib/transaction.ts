@@ -1,6 +1,6 @@
 import { wrapMultiResult } from "./utils";
 import asCallback from "standard-as-callback";
-import Pipeline from "./pipeline";
+import Pipeline from "./Commander/Pipeline";
 import { CallbackFunction } from "./types";
 
 export function addTransactionSupport(redis) {

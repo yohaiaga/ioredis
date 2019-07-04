@@ -27,19 +27,6 @@ export interface ICommandDef {
   since?: string;
 }
 
-const defaultCommandDef = (name: string): ICommandDef => ({
-  name,
-  constantParameters: [],
-  summary: "",
-  arguments: [
-    {
-      name: "arg",
-      type: ":any",
-      multiple: true
-    }
-  ]
-});
-
 const defs = Object.keys(commands)
   .sort()
   .map(commandName => {
@@ -56,8 +43,7 @@ const defs = Object.keys(commands)
   });
 
 export function getDef(commandName: string): ICommandDef[] {
-  const result = defs.filter(def => def.name === commandName);
-  return result.length ? result : [defaultCommandDef(commandName)];
+  return defs.filter(def => def.name === commandName);
 }
 
 function resolveVariableNameConflict(args: ICommandArgument[]) {

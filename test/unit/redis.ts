@@ -1,6 +1,6 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
-import Redis from "../../lib/redis";
+import Redis from "../../lib";
 
 describe("Redis", function() {
   describe("constructor", function() {

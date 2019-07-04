@@ -93,15 +93,37 @@ function getReturnType(ret: ICommandReturn, buffer: boolean): string {
     .join(" | ");
 }
 
+export function getComment(def: ICommandDef): string {
+  const { summary, since, complexity } = def;
+
+  const comments = [ensurePeriod(summary)];
+  if (complexity) {
+    comments.push(`Complexity: ${ensurePeriod(complexity)}`);
+  }
+  if (since) {
+    comments.push(`Since Redis v${since}`);
+  }
+  if (def.return && def.return.description) {
+    comments.push(`@returns ${def.return.description}`);
+  }
+  return summary
+    ? "/**\n" + `${comments.map(a => " * " + a + "\n *").join("\n")}\n */\n`
+    : "";
+}
+
 export function getCommandDef(
   def: ICommandDef,
   buffer: boolean
 ): string | undefined {
   const returnType = getReturnType(def.return, buffer);
-  if (buffer && getReturnType(def.return, false) == returnType) {
+  if (
+    buffer &&
+    returnType.indexOf("any") === -1 &&
+    getReturnType(def.return, false) == returnType
+  ) {
     return;
   }
-  const { summary, arguments: args, since, complexity } = def;
+  const { arguments: args } = def;
   if (
     args &&
     args.some((arg, index) => {
@@ -119,22 +141,9 @@ export function getCommandDef(
       return;
     }
   }
-  const comments = [ensurePeriod(summary)];
-  if (complexity) {
-    comments.push(`Complexity: ${ensurePeriod(complexity)}`);
-  }
-  if (since) {
-    comments.push(`Since Redis v${since}`);
-  }
-  if (def.return && def.return.description) {
-    comments.push(`@returns ${def.return.description}`);
-  }
   const funcMatrix = getFunctionMatrix(parameterDefs);
-  const commentPart = summary
-    ? "/**\n" + `${comments.map(a => " * " + a + "\n *").join("\n")}\n */\n`
-    : "";
   return (
-    commentPart +
+    getComment(def) +
     funcMatrix
       .map(defs => {
         const { constantParameters } = def;
@@ -156,7 +165,7 @@ export function getCommandDef(
         }
         return `${camelcase(def.name)}${
           buffer ? "Buffer" : ""
-        }(${parameters}): Promise<${getReturnType(def.return, buffer)}>;`;
+        }(${parameters}): Promise<${returnType}>;`;
       })
       .join("\n\n")
   );

@@ -1,3 +1,5 @@
+import { ICommand } from "./types";
+
 export interface ICommanderOptions {
   /**
    * Whether to show friendly error stack. Enabling this option
@@ -11,6 +13,7 @@ export interface ICommanderOptions {
   keyPrefix?: string;
 }
 
-export const DEFAULT_COMMANDER_OPTIONS: ICommanderOptions = {
-  showFriendlyErrorStack: false
-};
+export interface ICommandSender {
+  commanderOptions: ICommanderOptions;
+  sendCommand(command: ICommand): any;
+}

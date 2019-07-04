@@ -1,24 +1,50 @@
-import { list } from "redis-commands";
 import { getCommandDef } from "./utils";
-import { getDef } from "./commandDef";
+import { getDef, ICommandDef } from "./commandDef";
 import { flatten } from "../../lib/utils";
-import camelcase = require("lodash.camelcase");
+import { commandList } from "../../lib/Commander/utils";
 
-const commands = new Set<string>(list);
+function getDefaultCommandDef(name: string): ICommandDef {
+  const defs = getDef(name);
+  const def = defs.length === 1 ? defs[0] : null;
+  return {
+    name,
+    constantParameters: [],
+    summary: def ? def.summary : "",
+    complexity: def ? def.complexity : "",
+    since: def ? def.since : "",
+    arguments: [
+      {
+        name: "arg",
+        type: ":any",
+        multiple: true
+      }
+    ]
+  };
+}
 
-commands.delete("monitor");
-commands.add("sentinel");
+function batchGetCommandDef(name: string, defs: ICommandDef[]): string[] {
+  if (!defs.length) {
+    defs = [getDefaultCommandDef(name)];
+  }
+  let ret: string[];
+  try {
+    ret = flatten(
+      defs.map(def => [getCommandDef(def, false), getCommandDef(def, true)])
+    );
+  } catch (err) {
+    console.error(err);
+  }
+  ret = ret.filter(d => d);
+  if (!ret.length) {
+    ret = batchGetCommandDef(name, [getDefaultCommandDef(name)]);
+  }
+  return ret;
+}
 
 const items = flatten(
-  Array.from(commands)
-    .sort()
-    .map(commandName => {
-      return flatten(
-        getDef(commandName).map(def => {
-          return [getCommandDef(def, false), getCommandDef(def, true)];
-        })
-      );
-    })
+  commandList.sort().map(commandName => {
+    return flatten(batchGetCommandDef(commandName, getDef(commandName)));
+  })
 )
   .filter(d => d)
   .map(prefixWithSpaces)
@@ -27,20 +53,20 @@ const items = flatten(
 function prefixWithSpaces(text: string, _: number): string {
   return text
     .split("\n")
-    .map(line => "    " + line)
+    .map(line => "  " + line)
     .join("\n");
 }
 
 const interfaceTemplate = `
-import { CallbackFunction } from '../types';
+import { CallbackFunction } from './types';
 
+export type TypeMapper<T, K> = T extends Promise<any> ? K : T
 export type CommandKey = string | Buffer | number
 export type CommandPattern = string | Buffer
 
-declare module './index' {
-  interface Commander {
-  ${items}
-  }
+export interface ICommander {
+${items}
 }
+
 `;
 console.log(interfaceTemplate);

@@ -10,8 +10,8 @@ const SUBSCRIBER_CONNECTION_NAME = "ioredisClusterSubscriber";
 
 export default class ClusterSubscriber {
   private started: boolean = false;
-  private subscriber: any = null;
-  private lastActiveSubscriber: any;
+  private subscriber: Redis = null;
+  private lastActiveSubscriber?: Redis;
 
   public constructor(
     private connectionPool: ConnectionPool,
@@ -37,7 +37,7 @@ export default class ClusterSubscriber {
     });
   }
 
-  public getInstance(): any {
+  public getInstance(): Redis {
     return this.subscriber;
   }
 

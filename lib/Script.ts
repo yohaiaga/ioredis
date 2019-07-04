@@ -5,7 +5,7 @@ import asCallback from "standard-as-callback";
 import { CallbackFunction } from "./types";
 
 export default class Script {
-  private sha: string;
+  public readonly sha: string;
 
   constructor(
     private lua: string,

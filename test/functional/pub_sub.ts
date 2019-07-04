@@ -1,4 +1,4 @@
-import Redis from "../../lib/redis";
+import Redis from "../../lib";
 import { expect } from "chai";
 
 describe("pub/sub", function() {
@@ -168,7 +168,7 @@ describe("pub/sub", function() {
           pub.publish("bar", "hi2");
         });
       });
-      redis.disconnect({ reconnect: true });
+      redis.disconnect(true);
     });
   });
 
@@ -190,7 +190,7 @@ describe("pub/sub", function() {
           pub.publish("ba1r", "hi2");
         });
       });
-      redis.disconnect({ reconnect: true });
+      redis.disconnect(true);
     });
   });
 });

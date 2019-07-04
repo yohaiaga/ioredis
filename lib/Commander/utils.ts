@@ -1,27 +1,34 @@
 import { list } from "redis-commands";
 import Command, { ICommandOptions } from "../command";
-import Commander from ".";
+import { Commander } from ".";
+import { ICommandSender } from "../ICommandSender";
+import Script from "../script";
 
 export const commandList = (list as string[])
   .filter(name => name !== "monitor")
   .concat("sentinel");
 
-export type GenericCommand = (...args: any[]) => Promise<any>;
+export type GenericCommand<T extends ICommandSender> = (
+  this: T,
+  ...args: any[]
+) => ReturnType<T["sendCommand"]>;
 
-export function generateFunction(_encoding: string): GenericCommand;
-export function generateFunction(
+export function generateFunction<T extends ICommandSender>(
+  _encoding: string
+): GenericCommand<T>;
+export function generateFunction<T extends ICommandSender>(
   _commandName: string | void,
   _encoding: string
-): GenericCommand;
-export function generateFunction(
+): GenericCommand<T>;
+export function generateFunction<T extends ICommandSender>(
   _commandName?: string,
   _encoding?: string
-): GenericCommand {
+): GenericCommand<T> {
   if (typeof _encoding === "undefined") {
     _encoding = _commandName;
     _commandName = null;
   }
-  return function(this: Commander) {
+  return function(this: T): ReturnType<T["sendCommand"]> {
     let firstArgIndex = 0;
     let commandName = _commandName;
     if (commandName === null) {
@@ -54,8 +61,11 @@ export function generateFunction(
   };
 }
 
-export function generateScriptingFunction(_script, _encoding) {
-  return function(this: Commander) {
+export function generateScriptingFunction(
+  _script: Script,
+  _encoding: string | null
+) {
+  return function(this: ICommandSender) {
     let { length } = arguments;
     let lastArgIndex = length - 1;
     let callback = arguments[lastArgIndex];

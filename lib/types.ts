@@ -12,7 +12,14 @@ export interface ICommand {
   resolve(result: any): void;
   reject(error: Error): void;
   promise: Promise<any>;
+  initPromise(): void;
+  ignore?: boolean;
+  getKeys(): Array<string | Buffer>;
   toWritable(): string | Buffer;
+  getSlot(): number | null;
+  transformReply(
+    result: Buffer | Buffer[]
+  ): string | string[] | Buffer | Buffer[];
 }
 
 export interface ICommandItem {
@@ -29,4 +36,5 @@ export type ConnectionStatus =
   | "connect"
   | "ready"
   | "reconnecting"
-  | "disconnecting";
+  | "disconnecting"
+  | "monitoring";

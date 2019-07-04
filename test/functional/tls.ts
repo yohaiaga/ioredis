@@ -1,6 +1,6 @@
 import * as tls from "tls";
 import * as net from "net";
-import Redis from "../../lib/redis";
+import Redis from "../../lib";
 import { expect } from "chai";
 import * as sinon from "sinon";
 import MockServer from "../helpers/mock_server";

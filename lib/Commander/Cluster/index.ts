@@ -1,6 +1,8 @@
 import ClusterAllFailedError from "../../errors/ClusterAllFailedError";
 import { noop, Debug } from "../../utils";
+import { Commander } from "..";
 import ConnectionPool from "./ConnectionPool";
+import { addTransactionSupport } from "../../transaction";
 import {
   NodeKey,
   normalizeNodeOptions,
@@ -14,7 +16,7 @@ import ScanStream from "../../ScanStream";
 import { AbortError, RedisError } from "redis-errors";
 import asCallback from "standard-as-callback";
 import * as PromiseContainer from "../../promiseContainer";
-import { CallbackFunction, ConnectionStatus } from "../../types";
+import { CallbackFunction, ConnectionStatus, ICommand } from "../../types";
 import {
   IClusterOptions,
   DEFAULT_CLUSTER_OPTIONS,
@@ -30,9 +32,14 @@ import {
 import * as commands from "redis-commands";
 import Command from "../../command";
 import Redis from "../Redis";
-import Commander from "..";
 import Deque = require("denque");
 import { IRedisOptions, IInternalRedisOptions } from "../Redis/RedisOptions";
+import { NetStream } from "../Redis/connectors/types";
+import {
+  IClusterErrorHandler,
+  IClusterOfflineQueueItemNode,
+  IClusterOfflineQueueItem
+} from "./types";
 
 const debug = Debug("cluster");
 
@@ -45,11 +52,11 @@ const debug = Debug("cluster");
 class Cluster extends Commander {
   private options: IInternalClusterOptions;
   private connectionPool: ConnectionPool;
-  private slots: NodeKey[][] = [];
+  public slots: NodeKey[][] = [];
   private manuallyClosing: boolean;
   private retryAttempts: number = 0;
   private delayQueue: DelayQueue = new DelayQueue();
-  private offlineQueue = new Deque();
+  private offlineQueue = new Deque<IClusterOfflineQueueItem>();
   private subscriber: ClusterSubscriber;
   private slotsTimer: NodeJS.Timer;
   private reconnectTimeout: NodeJS.Timer;
@@ -119,18 +126,18 @@ class Cluster extends Commander {
     }
   }
 
-  private resetOfflineQueue() {
+  private resetOfflineQueue(): void {
     this.offlineQueue = new Deque();
   }
 
-  private clearNodesRefreshInterval() {
+  private clearNodesRefreshInterval(): void {
     if (this.slotsTimer) {
       clearTimeout(this.slotsTimer);
       this.slotsTimer = null;
     }
   }
 
-  private resetNodesRefreshInterval() {
+  private resetNodesRefreshInterval(): void {
     if (this.slotsTimer) {
       return;
     }
@@ -290,7 +297,7 @@ class Cluster extends Commander {
    *
    * @param [reconnect=false]
    */
-  public disconnect(reconnect: boolean = false) {
+  public disconnect(reconnect: boolean = false): void {
     const status = this.status;
     this.setStatus("disconnecting");
 
@@ -396,9 +403,9 @@ class Cluster extends Commander {
   /**
    * Refresh the slot cache
    *
-   * @param {CallbackFunction} [callback]
+   * @param callback
    */
-  private refreshSlotsCache(callback?: CallbackFunction<void>): void {
+  public refreshSlotsCache(callback?: CallbackFunction<void>): void {
     if (this.isRefreshing) {
       if (typeof callback === "function") {
         process.nextTick(callback);
@@ -419,7 +426,7 @@ class Cluster extends Commander {
 
     let lastNodeError = null;
 
-    function tryNode(index) {
+    function tryNode(index: number) {
       if (index === nodes.length) {
         const error = new ClusterAllFailedError(
           "Failed to refresh slots cache.",
@@ -458,22 +465,21 @@ class Cluster extends Commander {
    * @param {Error} error
    * @memberof Cluster
    */
-  private flushQueue(error: Error) {
-    let item;
+  private flushQueue(error: Error): void {
     while (this.offlineQueue.length > 0) {
-      item = this.offlineQueue.shift();
+      const item = this.offlineQueue.shift();
       item.command.reject(error);
     }
   }
 
-  private executeOfflineCommands() {
+  private executeOfflineCommands(): void {
     if (this.offlineQueue.length) {
       debug("send %d commands in offline queue", this.offlineQueue.length);
       const offlineQueue = this.offlineQueue;
       this.resetOfflineQueue();
       while (offlineQueue.length > 0) {
         const item = offlineQueue.shift();
-        this.sendCommand(item.command, item.stream, item.node);
+        this.internalSendCommand(item.command, item.stream, item.node);
       }
     }
   }
@@ -497,7 +503,15 @@ class Cluster extends Commander {
       : nodeKey;
   }
 
-  private sendCommand(command, stream, node) {
+  public sendCommand(command: ICommand): Promise<any> {
+    return this.internalSendCommand(command);
+  }
+
+  private internalSendCommand(
+    command: ICommand,
+    stream?: NetStream,
+    node?: IClusterOfflineQueueItemNode
+  ): Promise<any> {
     if (this.status === "wait") {
       this.connect().catch(noop);
     }
@@ -517,45 +531,48 @@ class Cluster extends Commander {
 
     let targetSlot = node ? node.slot : command.getSlot();
     const ttl = {};
-    const _this = this;
+    // @ts-ignore
     if (!node && !command.__is_reject_overwritten) {
       // eslint-disable-next-line @typescript-eslint/camelcase
+      // @ts-ignore
       command.__is_reject_overwritten = true;
       const reject = command.reject;
-      command.reject = function(err) {
+      command.reject = err => {
         const partialTry = tryConnection.bind(null, true);
-        _this.handleError(err, ttl, {
-          moved: function(slot, key) {
+        this.handleError(err, ttl, {
+          moved: (slot, key) => {
             debug("command %s is moved to %s", command.name, key);
             targetSlot = Number(slot);
-            if (_this.slots[slot]) {
-              _this.slots[slot][0] = key;
+            if (this.slots[slot]) {
+              this.slots[slot][0] = key;
             } else {
-              _this.slots[slot] = [key];
+              this.slots[slot] = [key];
             }
-            _this.connectionPool.findOrCreate(_this.natMapper(key));
+            this.connectionPool.findOrCreate(this.natMapper(key));
             tryConnection();
             debug("refreshing slot caches... (triggered by MOVED error)");
-            _this.refreshSlotsCache();
+            this.refreshSlotsCache();
           },
-          ask: function(slot, key) {
+          ask: (slot, key) => {
             debug("command %s is required to ask %s:%s", command.name, key);
-            const mapped = _this.natMapper(key);
-            _this.connectionPool.findOrCreate(mapped);
+            const mapped = this.natMapper(key);
+            this.connectionPool.findOrCreate(mapped);
             tryConnection(false, `${mapped.host}:${mapped.port}`);
           },
           tryagain: partialTry,
           clusterDown: partialTry,
           connectionClosed: partialTry,
-          maxRedirections: function(redirectionError) {
+          maxRedirections: redirectionError => {
             reject.call(command, redirectionError);
           },
-          defaults: function() {
+          defaults: () => {
             reject.call(command, err);
           }
         });
       };
     }
+
+    const _this = this;
     tryConnection();
 
     function tryConnection(random?: boolean, asking?: string) {
@@ -563,7 +580,7 @@ class Cluster extends Commander {
         command.reject(new AbortError("Cluster is ended."));
         return;
       }
-      let redis;
+      let redis: Redis;
       if (_this.status === "ready" || command.name === "cluster") {
         if (node && node.redis) {
           redis = node.redis;
@@ -621,7 +638,7 @@ class Cluster extends Commander {
         }
       }
       if (redis) {
-        redis.sendCommand(command, stream);
+        redis.internalSendCommand(command, stream);
       } else if (_this.options.enableOfflineQueue) {
         _this.offlineQueue.push({
           command: command,
@@ -639,7 +656,11 @@ class Cluster extends Commander {
     return command.promise;
   }
 
-  private handleError(error, ttl, handlers) {
+  public handleError(
+    error: Error,
+    ttl: { value?: number },
+    handlers: IClusterErrorHandler
+  ) {
     if (typeof ttl.value === "undefined") {
       ttl.value = this.options.maxRedirections;
     } else {
@@ -680,7 +701,7 @@ class Cluster extends Commander {
     }
   }
 
-  private getInfoFromNode(redis, callback) {
+  private getInfoFromNode(redis: Redis, callback: CallbackFunction<void>) {
     if (!redis) {
       return callback(new Error("Node is disconnected"));
     }
@@ -857,6 +878,6 @@ scanCommands.forEach(command => {
   };
 });
 
-require("../transaction").addTransactionSupport(Cluster.prototype);
+addTransactionSupport(Cluster.prototype);
 
 export default Cluster;

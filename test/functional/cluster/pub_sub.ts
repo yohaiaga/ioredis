@@ -2,7 +2,7 @@ import MockServer from "../../helpers/mock_server";
 import { expect } from "chai";
 import { Cluster } from "../../../lib";
 import * as sinon from "sinon";
-import Redis from "../../../lib/redis";
+import Redis from "../../../lib";
 
 describe("cluster:pub/sub", function() {
   it("should receive messages", function(done) {

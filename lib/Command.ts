@@ -187,7 +187,7 @@ export default class Command implements ICommand {
     }
   }
 
-  private initPromise() {
+  public initPromise(): void {
     const Promise = getPromise();
     const promise = new Promise((resolve, reject) => {
       if (!this.transformed) {
@@ -212,7 +212,7 @@ export default class Command implements ICommand {
     this.promise = asCallback(promise, this.callback);
   }
 
-  public getSlot() {
+  public getSlot(): number | null {
     if (typeof this.slot === "undefined") {
       const key = this.getKeys()[0];
       this.slot = key == null ? null : calculateSlot(key);

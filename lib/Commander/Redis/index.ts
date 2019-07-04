@@ -18,7 +18,7 @@ import {
 import { parseOptions } from "./utils";
 import { IConnector, NetStream } from "./connectors/types";
 import { CallbackFunction, ICommand, ConnectionStatus } from "../../types";
-import { ICondition } from "./types";
+import { ICondition, IRedisQueueItem } from "./types";
 
 const debug = Debug("redis");
 
@@ -62,16 +62,23 @@ interface IFlushQueueOptions {
  * ```
  */
 class Redis extends Commander {
-  private retryAttempts: number;
-  private connector: IConnector;
-  private commandQueue: Deque;
-  private offlineQueue: Deque;
-  private status: ConnectionStatus;
-  private stream: NetStream;
-  private manuallyClosing: boolean;
-  private reconnectTimeout: NodeJS.Timeout;
-  private condition: ICondition;
-  private options: IInternalRedisOptions;
+  protected retryAttempts: number;
+  protected connector: IConnector;
+  public commandQueue: Deque<IRedisQueueItem>;
+  protected serverInfo: { [key: string]: any };
+  protected prevCommandQueue?: Deque;
+  protected offlineQueue: Deque<IRedisQueueItem>;
+  private _status: ConnectionStatus;
+  public stream?: NetStream;
+  protected manuallyClosing: boolean;
+  protected reconnectTimeout: NodeJS.Timeout | null;
+  public condition: ICondition;
+  public prevCondition: ICondition | null;
+  public options: IInternalRedisOptions;
+
+  public get status(): ConnectionStatus {
+    return this._status;
+  }
 
   /**
    * Create a Redis instance
@@ -90,7 +97,7 @@ class Redis extends Commander {
   public constructor(port: number, host: string);
   public constructor(options: Partial<IRedisOptions>);
   public constructor(path: string);
-  public constructor(port: number);
+  public constructor(port?: number);
   public constructor() {
     const options = parseOptions(arguments[0], arguments[1], arguments[2]);
     super(options);
@@ -119,18 +126,18 @@ class Redis extends Commander {
     }
   }
 
-  private resetCommandQueue() {
+  protected resetCommandQueue() {
     this.commandQueue = new Deque();
   }
 
-  private resetOfflineQueue() {
+  protected resetOfflineQueue() {
     this.offlineQueue = new Deque();
   }
 
   /**
    * Change instance's status
    */
-  private setStatus(status: ConnectionStatus, arg?: any) {
+  protected setStatus(status: ConnectionStatus, arg?: any) {
     // @ts-ignore
     if (debug.enabled) {
       debug(
@@ -140,7 +147,7 @@ class Redis extends Commander {
         status
       );
     }
-    this.status = status;
+    this._status = status;
     process.nextTick(this.emit.bind(this, status, arg));
   }
 
@@ -298,17 +305,17 @@ class Redis extends Commander {
     return new Redis(Object.assign({}, this.options, override));
   }
 
-  private recoverFromFatalError(
+  public recoverFromFatalError(
     commandError: Error,
     err: Error,
-    options: Partial<IFlushQueueOptions>
+    options?: Partial<IFlushQueueOptions>
   ): void {
-    this.flushQueue(err, options);
+    this.flushQueue(commandError, options);
     this.silentEmit("error", err);
     this.disconnect(true);
   }
 
-  private handleReconnection(err: Error, item): void {
+  public handleReconnection(err: Error, item: IRedisQueueItem): void {
     var needReconnect: ReturnType<ReconnectOnError> = false;
     if (this.options.reconnectOnError) {
       needReconnect = this.options.reconnectOnError(err);
@@ -342,11 +349,13 @@ class Redis extends Commander {
   /**
    * Flush offline queue and command queue with error.
    *
-   * @param {Error} error - The error object to send to the commands
-   * @param {object} options
-   * @private
+   * @param error - The error object to send to the commands
+   * @param options
    */
-  private flushQueue(error: Error, options: Partial<IFlushQueueOptions> = {}) {
+  protected flushQueue(
+    error: Error,
+    options: Partial<IFlushQueueOptions> = {}
+  ) {
     const { offlineQueue, commandQueue } = {
       offlineQueue: true,
       commandQueue: true,
@@ -378,10 +387,9 @@ class Redis extends Commander {
    * Check whether Redis has finished loading the persistent data and is able to
    * process commands.
    *
-   * @param {Function} callback
-   * @private
+   * @param callback
    */
-  private _readyCheck(
+  protected _readyCheck(
     callback: CallbackFunction<{ [key: string]: any }>
   ): void {
     this.info((err, res) => {
@@ -511,29 +519,36 @@ class Redis extends Commander {
    * However when you want to send a command that is not supported by ioredis yet,
    * this command will be useful.
    *
-   * @method sendCommand
-   * @memberOf Redis#
-   * @param {Command} command - The Command instance to send.
-   * @see {@link Command}
+   * @param command - The Command instance to send.
    * @example
    * ```js
-   * var redis = new Redis();
+   * const redis = new Redis();
    *
    * // Use callback
-   * var get = new Command('get', ['foo'], 'utf8', function (err, result) {
+   * const get = new Command('get', ['foo'], 'utf8', function (err, result) {
    *   console.log(result);
    * });
    * redis.sendCommand(get);
    *
    * // Use promise
-   * var set = new Command('set', ['foo', 'bar'], 'utf8');
+   * const set = new Command('set', ['foo', 'bar'], 'utf8');
    * set.promise.then(function (result) {
    *   console.log(result);
    * });
    * redis.sendCommand(set);
    * ```
    */
-  private sendCommand(command: ICommand, stream?: NetStream): Promise<any> {
+  public sendCommand(command: ICommand): Promise<any> {
+    return this.internalSendCommand(command);
+  }
+
+  /**
+   * TODO: private
+   */
+  public internalSendCommand(
+    command: ICommand,
+    stream?: NetStream
+  ): Promise<any> {
     if (this.status === "wait") {
       this.connect().catch(noop);
     }

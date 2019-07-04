@@ -1,6 +1,6 @@
 import MockServer from "../helpers/mock_server";
 import { expect } from "chai";
-import Redis from "../../lib/redis";
+import Redis from "../../lib";
 import * as sinon from "sinon";
 
 describe("auth", function() {
@@ -15,7 +15,7 @@ describe("auth", function() {
         done();
       }
     });
-    var redis = new Redis({ port: 17379, password: "pass" });
+    const redis = new Redis({ port: 17379, password: "pass" });
     redis.get("foo").catch(function() {});
   });
 
@@ -37,7 +37,7 @@ describe("auth", function() {
     var redis = new Redis({ port: 17379, password: "pass" });
     redis.once("ready", function() {
       begin = true;
-      redis.disconnect({ reconnect: true });
+      redis.disconnect(true);
       redis.get("foo").catch(function() {});
     });
   });

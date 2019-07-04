@@ -4,7 +4,7 @@ import {
   IIpcConnectionOptions,
   ITcpConnectionOptions
 } from "./connectors/StandaloneConnector";
-import { ICommanderOptions } from "../CommanderOptions";
+import { ICommanderOptions } from "../../ICommandSender";
 
 export type ReconnectOnError = (err: Error) => boolean | 1 | 2;
 

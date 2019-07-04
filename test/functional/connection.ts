@@ -1,5 +1,5 @@
 import { Socket } from "net";
-import Redis from "../../lib/redis";
+import Redis from "../../lib";
 import * as sinon from "sinon";
 import { expect } from "chai";
 import MockServer from "../helpers/mock_server";

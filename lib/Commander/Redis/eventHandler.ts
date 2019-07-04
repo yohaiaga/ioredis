@@ -4,6 +4,8 @@ import Command from "../../command";
 import { MaxRetriesPerRequestError } from "../../errors";
 import { Debug, noop, CONNECTION_CLOSED_ERROR_MSG } from "../../utils";
 import DataHandler from "./DataHandler";
+import Redis from ".";
+import { ICommand } from "../../types";
 
 const debug = Debug("connection");
 
@@ -70,28 +72,33 @@ export function connectHandler(self) {
   };
 }
 
-export function closeHandler(self) {
-  return function() {
-    self.setStatus("close");
+export function closeHandler(self: Redis) {
+  return function(this: Redis) {
+    const close = () => {
+      this.setStatus("end");
+      this.flushQueue(new Error(CONNECTION_CLOSED_ERROR_MSG));
+    };
 
-    if (!self.prevCondition) {
-      self.prevCondition = self.condition;
+    this.setStatus("close");
+
+    if (!this.prevCondition) {
+      this.prevCondition = this.condition;
     }
-    if (self.commandQueue.length) {
-      self.prevCommandQueue = self.commandQueue;
+    if (this.commandQueue.length) {
+      this.prevCommandQueue = this.commandQueue;
     }
 
-    if (self.manuallyClosing) {
-      self.manuallyClosing = false;
+    if (this.manuallyClosing) {
+      this.manuallyClosing = false;
       debug("skip reconnecting since the connection is manually closed.");
       return close();
     }
 
-    if (typeof self.options.retryStrategy !== "function") {
+    if (typeof this.options.retryStrategy !== "function") {
       debug("skip reconnecting because `retryStrategy` is not a function");
       return close();
     }
-    const retryDelay = self.options.retryStrategy(++self.retryAttempts);
+    const retryDelay = this.options.retryStrategy(++this.retryAttempts);
 
     if (typeof retryDelay !== "number") {
       debug(
@@ -102,138 +109,133 @@ export function closeHandler(self) {
 
     debug("reconnect in %sms", retryDelay);
 
-    self.setStatus("reconnecting", retryDelay);
-    self.reconnectTimeout = setTimeout(function() {
-      self.reconnectTimeout = null;
-      self.connect().catch(noop);
+    this.setStatus("reconnecting", retryDelay);
+    this.reconnectTimeout = setTimeout(() => {
+      this.reconnectTimeout = null;
+      this.connect().catch(noop);
     }, retryDelay);
 
-    const { maxRetriesPerRequest } = self.options;
+    const { maxRetriesPerRequest } = this.options;
     if (typeof maxRetriesPerRequest === "number") {
       if (maxRetriesPerRequest < 0) {
         debug("maxRetriesPerRequest is negative, ignoring...");
       } else {
-        const remainder = self.retryAttempts % (maxRetriesPerRequest + 1);
+        const remainder = this.retryAttempts % (maxRetriesPerRequest + 1);
         if (remainder === 0) {
           debug(
             "reach maxRetriesPerRequest limitation, flushing command queue..."
           );
-          self.flushQueue(new MaxRetriesPerRequestError(maxRetriesPerRequest));
+          this.flushQueue(new MaxRetriesPerRequestError(maxRetriesPerRequest));
         }
       }
     }
-  };
-
-  function close() {
-    self.setStatus("end");
-    self.flushQueue(new Error(CONNECTION_CLOSED_ERROR_MSG));
-  }
+  }.bind(self);
 }
 
-export function errorHandler(self) {
-  return function(error) {
+export function errorHandler(self: Redis) {
+  return function(this: Redis, error: Error) {
     debug("error: %s", error);
     self.silentEmit("error", error);
-  };
+  }.bind(self);
 }
 
-export function readyHandler(self) {
-  return function() {
-    self.setStatus("ready");
-    self.retryAttempts = 0;
+export function readyHandler(self: Redis) {
+  return function(this: Redis) {
+    this.setStatus("ready");
+    this.retryAttempts = 0;
 
-    if (self.options.monitor) {
-      self.call("monitor");
-      const { sendCommand } = self;
-      self.sendCommand = function(command) {
+    if (this.options.monitor) {
+      this.call("monitor");
+      const { sendCommand } = this;
+      this.sendCommand = function(command: ICommand): Promise<any> {
         if (Command.checkFlag("VALID_IN_MONITOR_MODE", command.name)) {
-          return sendCommand.call(self, command);
+          return sendCommand.call(this, command);
         }
         command.reject(
           new Error("Connection is in monitoring mode, can't process commands.")
         );
         return command.promise;
       };
-      self.once("close", function() {
-        delete self.sendCommand;
+      this.once("close", () => {
+        delete this.sendCommand;
       });
-      self.setStatus("monitoring");
+      this.setStatus("monitoring");
       return;
     }
-    const finalSelect = self.prevCondition
-      ? self.prevCondition.select
-      : self.condition.select;
+    const finalSelect = this.prevCondition
+      ? this.prevCondition.select
+      : this.condition.select;
 
-    if (self.options.connectionName) {
-      debug("set the connection name [%s]", self.options.connectionName);
-      self.client("setname", self.options.connectionName).catch(noop);
+    if (this.options.connectionName) {
+      debug("set the connection name [%s]", this.options.connectionName);
+      this.client("setname", this.options.connectionName).catch(noop);
     }
 
-    if (self.options.readOnly) {
+    if (this.options.readOnly) {
       debug("set the connection to readonly mode");
-      self.readonly().catch(noop);
+      this.readonly().catch(noop);
     }
 
-    if (self.prevCondition) {
-      const condition = self.prevCondition;
-      self.prevCondition = null;
+    if (this.prevCondition) {
+      const condition = this.prevCondition;
+      this.prevCondition = null;
       if (condition.subscriber && self.options.autoResubscribe) {
         // We re-select the previous db first since
         // `SELECT` command is not valid in sub mode.
-        if (self.condition.select !== finalSelect) {
+        if (this.condition.select !== finalSelect) {
           debug("connect to db [%d]", finalSelect);
-          self.select(finalSelect);
+          this.select(finalSelect);
         }
         const subscribeChannels = condition.subscriber.channels("subscribe");
         if (subscribeChannels.length) {
           debug("subscribe %d channels", subscribeChannels.length);
-          self.subscribe(subscribeChannels);
+          this.subscribe(subscribeChannels);
         }
         const psubscribeChannels = condition.subscriber.channels("psubscribe");
         if (psubscribeChannels.length) {
           debug("psubscribe %d channels", psubscribeChannels.length);
-          self.psubscribe(psubscribeChannels);
+          this.psubscribe(psubscribeChannels);
         }
       }
     }
 
-    if (self.prevCommandQueue) {
-      if (self.options.autoResendUnfulfilledCommands) {
-        debug("resend %d unfulfilled commands", self.prevCommandQueue.length);
-        while (self.prevCommandQueue.length > 0) {
-          const item = self.prevCommandQueue.shift();
+    if (this.prevCommandQueue) {
+      if (this.options.autoResendUnfulfilledCommands) {
+        debug("resend %d unfulfilled commands", this.prevCommandQueue.length);
+        while (this.prevCommandQueue.length > 0) {
+          const item = this.prevCommandQueue.shift();
           if (
-            item.select !== self.condition.select &&
+            item.select !== this.condition.select &&
             item.command.name !== "select"
           ) {
-            self.select(item.select);
+            this.select(item.select);
           }
-          self.sendCommand(item.command, item.stream);
+          this.internalSendCommand(item.command, item.stream);
         }
       } else {
-        self.prevCommandQueue = null;
+        this.prevCommandQueue = null;
       }
     }
 
-    if (self.offlineQueue.length) {
-      debug("send %d commands in offline queue", self.offlineQueue.length);
-      const offlineQueue = self.offlineQueue;
-      self.resetOfflineQueue();
+    if (this.offlineQueue.length) {
+      debug("send %d commands in offline queue", this.offlineQueue.length);
+      const { offlineQueue } = this;
+      this.resetOfflineQueue();
       while (offlineQueue.length > 0) {
         const item = offlineQueue.shift();
         if (
-          item.select !== self.condition.select &&
+          item.select !== this.condition.select &&
           item.command.name !== "select"
         ) {
-          self.select(item.select);
+          this.select(item.select);
         }
-        self.sendCommand(item.command, item.stream);
+        this.internalSendCommand(item.command, item.stream);
       }
     }
 
-    if (self.condition.select !== finalSelect) {
+    if (this.condition.select !== finalSelect) {
       debug("connect to db [%d]", finalSelect);
-      self.select(finalSelect);
+      this.select(finalSelect);
     }
-  };
+  }.bind(self);
 }

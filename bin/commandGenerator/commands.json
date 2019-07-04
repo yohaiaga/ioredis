@@ -1454,6 +1454,10 @@
         "type": "key"
       }
     ],
+    "return": {
+      "type": "integer",
+      "description": "The value of key after the increment."
+    },
     "since": "1.0.0",
     "group": "string"
   },

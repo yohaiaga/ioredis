@@ -1,12 +1,9 @@
-import Deque = require("denque");
-import { EventEmitter } from "events";
 import * as RedisParser from "redis-parser";
-import { NetStream } from "./connectors/types";
 import { Debug } from "../../utils";
-import { ICommandItem, ICommand } from "../../types";
-import { ICondition } from "./types";
+import { ICommand } from "../../types";
+import { IRedisQueueItem } from "./types";
 import SubscriptionSet from "../../SubscriptionSet";
-import { Command } from "../..";
+import Redis, { Command } from "../..";
 
 const debug = Debug("dataHandler");
 
@@ -17,30 +14,15 @@ export interface IDataHandlerOptions {
   dropBufferSupport: boolean;
 }
 
-interface IDataHandledable extends EventEmitter {
-  stream: NetStream;
-  status: string;
-  condition: ICondition;
-  commandQueue: Deque<ICommandItem>;
-
-  disconnect(reconnect: boolean): void;
-  recoverFromFatalError(commandError: Error, err: Error, options: any): void;
-  handleReconnection(err: Error, item: ICommandItem): void;
-}
-
 interface IParserOptions {
   stringNumbers: boolean;
-  dropBufferSupport: boolean;
 }
 
 export default class DataHandler {
-  public constructor(
-    private redis: IDataHandledable,
-    parserOptions: IParserOptions
-  ) {
+  public constructor(private redis: Redis, parserOptions: IParserOptions) {
     const parser = new RedisParser({
       stringNumbers: parserOptions.stringNumbers,
-      returnBuffers: !parserOptions.dropBufferSupport,
+      returnBuffers: true,
       returnError: (err: Error) => {
         this.returnError(err);
       },
@@ -207,7 +189,7 @@ export default class DataHandler {
     return true;
   }
 
-  private shiftCommand(reply: ReplyData | Error): ICommandItem | null {
+  private shiftCommand(reply: ReplyData | Error): IRedisQueueItem | null {
     const item = this.redis.commandQueue.shift();
     if (!item) {
       const message =

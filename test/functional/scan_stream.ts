@@ -1,4 +1,4 @@
-import Redis from "../../lib/redis";
+import Redis from "../../lib";
 import { expect } from "chai";
 import { Readable } from "stream";
 import * as sinon from "sinon";

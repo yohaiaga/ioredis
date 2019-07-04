@@ -6,17 +6,20 @@ import {
   generateScriptingFunction
 } from "./utils";
 import { EventEmitter } from "events";
-import { ICommanderOptions } from "./CommanderOptions";
-import "./commands";
+import "./index.interface";
+import { ICommand } from "../types";
+import { ICommander } from "../ICommander";
+import { ICommanderOptions, ICommandSender } from "../ICommandSender";
 
 /**
  * Commander
  *
  * This is the base class of `Redis`, `Cluster` and `Pipeline`
  */
-abstract class Commander extends EventEmitter {
-  private scriptsSet: { [name: string]: any } = {};
-  private commanderOptions: ICommanderOptions;
+abstract class Commander extends EventEmitter implements ICommandSender {
+  public commanderOptions: ICommanderOptions;
+  // TODO: protected
+  public scriptsSet: { [name: string]: Script } = {};
 
   public constructor(options: Partial<ICommanderOptions> = {}) {
     super();
@@ -58,7 +61,7 @@ abstract class Commander extends EventEmitter {
    * @param definition.numberOfKeys - The number of keys. If omit, you have to
    *        pass the number of keys as the first argument every time you invoke the command
    */
-  public defineCommand(name: string, definition) {
+  public defineCommand(name: string, definition): void {
     const script = new Script(
       definition.lua,
       definition.numberOfKeys,
@@ -73,21 +76,25 @@ abstract class Commander extends EventEmitter {
   /**
    * Send a command
    */
-  private sendCommand(...arg: any): Promise<any> {
+  public sendCommand(command: ICommand): Promise<any> {
     throw new Error("Commander cannot be used directly.");
   }
 }
 
 interface Commander {
-  call: GenericCommand;
-  callBuffer: GenericCommand;
+  call: GenericCommand<Commander>;
+  callBuffer: GenericCommand<Commander>;
 }
 
 Commander.prototype.call = generateFunction("utf8");
 Commander.prototype.callBuffer = generateFunction(null);
 
+interface Commander extends ICommander {}
 commandList.forEach(commandName => {
-  Commander.prototype[commandName] = generateFunction(commandName, "utf8");
+  Commander.prototype[commandName] = generateFunction<Commander>(
+    commandName,
+    "utf8"
+  );
   Commander.prototype[commandName + "Buffer"] = generateFunction(
     commandName,
     null

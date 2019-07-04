@@ -1,6 +1,6 @@
 import { NodeRole } from "./util";
 import { lookup } from "dns";
-import { ICommanderOptions } from "../CommanderOptions";
+import { ICommanderOptions } from "../../ICommandSender";
 
 export type DNSLookupFunction = (
   hostname: string,

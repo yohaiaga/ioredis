@@ -1,4 +1,4 @@
-import Redis from "../../lib/redis";
+import Redis from "../../lib";
 import * as sinon from "sinon";
 
 describe("ready_check", function() {

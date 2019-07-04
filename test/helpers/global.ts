@@ -1,7 +1,7 @@
 "use strict";
 
 import * as sinon from "sinon";
-import Redis from "../../lib/redis";
+import Redis from "../../lib";
 
 afterEach(function(done) {
   sinon.restore();

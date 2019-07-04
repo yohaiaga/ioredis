@@ -1,4 +1,4 @@
-import Redis from "../../lib/redis";
+import Redis from "../../lib";
 import { expect } from "chai";
 import * as bluebirdPromise from "bluebird";
 
