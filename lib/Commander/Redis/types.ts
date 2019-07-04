@@ -10,6 +10,6 @@ export interface ICondition {
 
 export interface IRedisQueueItem {
   select: number;
+  stream: { write: (writable: any) => any };
   command: ICommand;
-  stream: NetStream;
 }

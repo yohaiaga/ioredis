@@ -1,7 +1,11 @@
 import { getCommandDef } from "./utils";
 import { getDef, ICommandDef } from "./commandDef";
 import { flatten } from "../../lib/utils";
-import { commandList } from "../../lib/Commander/utils";
+import { list } from "redis-commands";
+
+const commandList = (list as string[])
+  .filter(name => name !== "monitor")
+  .concat("sentinel");
 
 function getDefaultCommandDef(name: string): ICommandDef {
   const defs = getDef(name);
@@ -59,6 +63,10 @@ function prefixWithSpaces(text: string, _: number): string {
 
 const interfaceTemplate = `
 import { CallbackFunction } from './types';
+
+export const commandList = <const> [${commandList
+  .map(name => `"${name}"`)
+  .join(", ")}];
 
 export type TypeMapper<T, K> = T extends Promise<any> ? K : T
 export type CommandKey = string | Buffer | number

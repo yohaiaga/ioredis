@@ -9,7 +9,7 @@ import { StandaloneConnector, SentinelConnector } from "./connectors";
 import ScanStream from "../../ScanStream";
 import * as commands from "redis-commands";
 import * as PromiseContainer from "../../promiseContainer";
-import { addTransactionSupport } from "../../transaction";
+import { addTransactionSupport, ITransaction } from "../../transaction";
 import {
   IRedisOptions,
   ReconnectOnError,
@@ -62,7 +62,7 @@ interface IFlushQueueOptions {
  * ```
  */
 class Redis extends Commander {
-  protected retryAttempts: number;
+  public retryAttempts: number;
   protected connector: IConnector;
   public commandQueue: Deque<IRedisQueueItem>;
   protected serverInfo: { [key: string]: any };
@@ -547,7 +547,7 @@ class Redis extends Commander {
    */
   public internalSendCommand(
     command: ICommand,
-    stream?: NetStream
+    stream?: { write: (writable: any) => any }
   ): Promise<any> {
     if (this.status === "wait") {
       this.connect().catch(noop);
@@ -678,6 +678,7 @@ class Redis extends Commander {
   }
 }
 
+interface Redis extends ITransaction {}
 addTransactionSupport(Redis.prototype);
 
 [

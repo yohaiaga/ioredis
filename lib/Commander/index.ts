@@ -1,14 +1,12 @@
 import Script from "../script";
 import {
-  commandList,
   generateFunction,
   GenericCommand,
   generateScriptingFunction
 } from "./utils";
 import { EventEmitter } from "events";
-import "./index.interface";
 import { ICommand } from "../types";
-import { ICommander } from "../ICommander";
+import { ICommander, commandList } from "../ICommander";
 import { ICommanderOptions, ICommandSender } from "../ICommandSender";
 
 /**
@@ -89,7 +87,10 @@ interface Commander {
 Commander.prototype.call = generateFunction("utf8");
 Commander.prototype.callBuffer = generateFunction(null);
 
-interface Commander extends ICommander {}
+type ICommanderWithoutMulti = {
+  [P in Exclude<keyof ICommander, "multi">]: ICommander[P]
+};
+interface Commander extends ICommanderWithoutMulti {}
 commandList.forEach(commandName => {
   Commander.prototype[commandName] = generateFunction<Commander>(
     commandName,

@@ -14,6 +14,7 @@ export interface ICommand {
   promise: Promise<any>;
   initPromise(): void;
   ignore?: boolean;
+  isCustomCommand: boolean;
   getKeys(): Array<string | Buffer>;
   toWritable(): string | Buffer;
   getSlot(): number | null;

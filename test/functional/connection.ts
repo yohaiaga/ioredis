@@ -21,20 +21,17 @@ describe("connection", function() {
     });
   });
 
-  it("should send AUTH command before any other commands", function(done) {
+  it("should send AUTH command before any other commands", async () => {
     var redis = new Redis({ password: "123" });
-    redis.get("foo");
-    var times = 0;
-    sinon.stub(redis, "sendCommand").callsFake(command => {
-      times += 1;
-      if (times === 1) {
-        expect(command.name).to.eql("auth");
-      } else if (times === 2) {
-        expect(command.name).to.eql("info");
-        redis.disconnect();
-        done();
-      }
-    });
+    const spy = sinon.spy(redis, "sendCommand");
+    await redis.get("foo");
+
+    expect(spy.callCount).to.eql(3);
+    expect(spy.firstCall.args[0].name).to.eql("auth");
+    expect(spy.secondCall.args[0].name).to.eql("info");
+    expect(spy.thirdCall.args[0].name).to.eql("get");
+
+    redis.disconnect();
   });
 
   it("should receive replies after connection is disconnected", function(done) {
@@ -76,53 +73,38 @@ describe("connection", function() {
       var redis = new Redis({ connectTimeout });
       var set = false;
 
-      // TODO: use spy
-      // @ts-ignore
-      const stub = sinon
-        .stub(Socket.prototype, "setTimeout")
-        .callsFake(timeout => {
-          if (timeout === connectTimeout) {
-            set = true;
-            return;
-          }
-          expect(set).to.eql(true);
-          expect(timeout).to.eql(0);
-          stub.restore();
-          redis.disconnect();
-          done();
-        });
+      const spy = sinon.spy(Socket.prototype, "setTimeout");
+
+      redis.on("ready", () => {
+        expect(spy.callCount).to.eql(2);
+        expect(spy.firstCall.args[0]).to.eql(connectTimeout);
+        expect(spy.secondCall.args[0]).to.eql(0);
+        redis.disconnect();
+        done();
+      });
     });
 
     it("should ignore timeout if connect", function(done) {
+      const connectTimeout = 500;
       var redis = new Redis({
         port: 6379,
-        connectTimeout: 500,
+        connectTimeout,
         retryStrategy: null
       });
-      let isReady = false;
-      let timedoutCalled = false;
 
-      // TODO: use spy
-      // @ts-ignore
-      sinon
-        .stub(Socket.prototype, "setTimeout")
-        .callsFake((timeout, callback) => {
-          if (timeout === 0) {
-            if (!isReady) {
-              isReady = true;
-            } else {
-              timedoutCalled = true;
-            }
-            return;
-          }
+      const spy = sinon.spy(Socket.prototype, "setTimeout");
 
-          setTimeout(() => {
-            callback();
-            expect(timedoutCalled).to.eql(false);
-            redis.disconnect();
-            done();
-          }, timeout);
-        });
+      redis.on("ready", () => {
+        expect(spy.callCount).to.eql(2);
+        expect(spy.firstCall.args[0]).to.eql(connectTimeout);
+        expect(spy.secondCall.args[0]).to.eql(0);
+
+        spy.firstCall.args[1]();
+        expect(spy.callCount).to.eql(2);
+
+        redis.disconnect();
+        done();
+      });
     });
   });
 
@@ -159,7 +141,6 @@ describe("connection", function() {
           .stub(Redis.prototype, "connect")
           .throws(new Error("`connect` should not be called"));
         setTimeout(function() {
-          Redis.prototype.connect.restore();
           done();
         }, 1);
       });
@@ -288,7 +269,7 @@ describe("connection", function() {
           done();
         });
       });
-      redis.set("foo", 1);
+      redis.set("foo", String(1));
     });
 
     it("should set the name before any subscribe command if reconnected", function(done) {

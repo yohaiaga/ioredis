@@ -2,7 +2,7 @@ import ClusterAllFailedError from "../../errors/ClusterAllFailedError";
 import { noop, Debug } from "../../utils";
 import { Commander } from "..";
 import ConnectionPool from "./ConnectionPool";
-import { addTransactionSupport } from "../../transaction";
+import { addTransactionSupport, ITransaction } from "../../transaction";
 import {
   NodeKey,
   normalizeNodeOptions,
@@ -51,7 +51,7 @@ const debug = Debug("cluster");
  */
 class Cluster extends Commander {
   private options: IInternalClusterOptions;
-  private connectionPool: ConnectionPool;
+  public connectionPool: ConnectionPool;
   public slots: NodeKey[][] = [];
   private manuallyClosing: boolean;
   private retryAttempts: number = 0;
@@ -326,7 +326,7 @@ class Cluster extends Commander {
    * @param {CallbackFunction<'OK'>} [callback]
    * @returns {Promise<'OK'>}
    */
-  public quit(callback?: CallbackFunction<"OK">): Promise<"OK"> {
+  public quit = (callback?: CallbackFunction<"OK">): Promise<"OK"> => {
     const status = this.status;
     this.setStatus("disconnecting");
 
@@ -370,7 +370,7 @@ class Cluster extends Commander {
       ).then(() => "OK"),
       callback
     );
-  }
+  };
 
   /**
    * Get nodes with the specified role
@@ -507,9 +507,9 @@ class Cluster extends Commander {
     return this.internalSendCommand(command);
   }
 
-  private internalSendCommand(
+  public internalSendCommand(
     command: ICommand,
-    stream?: NetStream,
+    stream?: { write: (writable: any) => any },
     node?: IClusterOfflineQueueItemNode
   ): Promise<any> {
     if (this.status === "wait") {
@@ -878,6 +878,7 @@ scanCommands.forEach(command => {
   };
 });
 
+interface Cluster extends ITransaction {}
 addTransactionSupport(Cluster.prototype);
 
 export default Cluster;

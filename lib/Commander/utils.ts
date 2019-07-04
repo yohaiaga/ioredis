@@ -1,12 +1,7 @@
-import { list } from "redis-commands";
 import Command, { ICommandOptions } from "../command";
 import { Commander } from ".";
 import { ICommandSender } from "../ICommandSender";
 import Script from "../script";
-
-export const commandList = (list as string[])
-  .filter(name => name !== "monitor")
-  .concat("sentinel");
 
 export type GenericCommand<T extends ICommandSender> = (
   this: T,

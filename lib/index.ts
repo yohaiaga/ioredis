@@ -6,7 +6,7 @@ export default Redis;
 export { default as Cluster } from "./Commander/Cluster";
 export { default as Command } from "./command";
 export { default as ScanStream } from "./ScanStream";
-export { default as Pipeline } from "./pipeline";
+export { Pipeline } from "./Commander/Pipeline";
 export {
   default as AbstractConnector
 } from "./Commander/Redis/connectors/AbstractConnector";

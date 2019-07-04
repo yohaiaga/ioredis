@@ -8,16 +8,16 @@ import { CallbackFunction, ICommand } from "../../types";
 import { Commander } from "..";
 import { Cluster } from "../..";
 import Script from "../../script";
-import { ICommander } from "../../ICommander";
+import { ICommander, commandList } from "../../ICommander";
 import { ICommanderOptions, ICommandSender } from "../../ICommandSender";
-import { GenericCommand, commandList, generateFunction } from "../utils";
+import { GenericCommand, generateFunction } from "../utils";
+import Redis from "../Redis";
 
 function isCluster(commander: Commander): commander is Cluster {
   return commander instanceof Cluster;
 }
 
 class Pipeline implements ICommandSender {
-  private isCluster: boolean;
   private _queue: ICommand[] = [];
   private _result = [];
   private _transactions = 0;
@@ -30,6 +30,8 @@ class Pipeline implements ICommandSender {
   private leftRedirections: { value?: number };
   private resolve: (result: any[]) => void;
   private reject: (error: Error) => void;
+
+  public multi: () => Pipeline;
 
   constructor(private redis: Commander) {
     Object.keys(redis.scriptsSet).forEach(name => {
@@ -51,6 +53,12 @@ class Pipeline implements ICommandSender {
         return _this._queue.length;
       }
     });
+
+    this.multi = () => {
+      this._transactions += 1;
+      Pipeline.prototype.multi.apply(this, arguments);
+      return this;
+    };
   }
 
   fillResult(value: any[], position: number): void {
@@ -212,15 +220,10 @@ class Pipeline implements ICommandSender {
     return this;
   }
 
-  public multi(callback?: CallbackFunction<any>): this {
-    this._transactions += 1;
-    super.multi(...arguments);
-    return this;
-  }
-
   public exec(callback?: CallbackFunction<any>): Promise<any> {
     if (this._transactions > 0) {
       this._transactions -= 1;
+      // TODO remove execBuffer
       return this.execBuffer.apply(this, arguments);
     }
     if (!this.nodeifiedPromise) {
@@ -231,7 +234,7 @@ class Pipeline implements ICommandSender {
       this.resolve([]);
     }
     let pipelineSlot: number;
-    if (this.isCluster) {
+    if (isCluster(this.redis)) {
       // List of the first key for each command
       const sampleKeys: (string | Buffer)[] = [];
       for (let i = 0; i < this._queue.length; i++) {
@@ -259,7 +262,7 @@ class Pipeline implements ICommandSender {
     const scripts = [];
     for (let i = 0; i < this._queue.length; ++i) {
       var item = this._queue[i];
-      if (this.isCluster && item.isCustomCommand) {
+      if (isCluster(this.redis) && item.isCustomCommand) {
         this.reject(
           new Error(
             "Sending custom commands in pipeline is not supported in Cluster mode."
@@ -270,7 +273,9 @@ class Pipeline implements ICommandSender {
       if (item.name !== "evalsha") {
         continue;
       }
-      const script = this._shaToScript[item.args[0]];
+      const script = this._shaToScript[
+        item.args[0] as string /* The first argument is sha */
+      ];
       if (!script) {
         continue;
       }
@@ -305,10 +310,11 @@ class Pipeline implements ICommandSender {
       let writePending: number = (_this.replyPending = _this._queue.length);
 
       let node;
-      if (_this.isCluster) {
+      const cluster = _this.redis;
+      if (isCluster(cluster)) {
         node = {
           slot: pipelineSlot,
-          redis: _this.redis.connectionPool.nodes.all[_this.preferKey]
+          redis: cluster.connectionPool.getInstanceByKey(_this.preferKey)
         };
       }
       let bufferMode = false;
@@ -328,10 +334,10 @@ class Pipeline implements ICommandSender {
             data += writable;
           }
           if (!--writePending) {
-            if (_this.isCluster) {
+            if (isCluster(cluster)) {
               node.redis.stream.write(data);
             } else {
-              _this.redis.stream.write(data);
+              (_this.redis as Redis).stream.write(data);
             }
 
             // Reset writePending for resending
@@ -343,7 +349,11 @@ class Pipeline implements ICommandSender {
       };
 
       for (let i = 0; i < _this._queue.length; ++i) {
-        _this.redis.sendCommand(_this._queue[i], stream, node);
+        if (isCluster(cluster)) {
+          cluster.internalSendCommand(_this._queue[i], stream, node);
+        } else {
+          (_this.redis as Redis).internalSendCommand(_this._queue[i], stream);
+        }
       }
       return _this.promise;
     }
@@ -363,7 +373,7 @@ Pipeline.prototype.callBuffer = generateFunction<Pipeline>(null);
 type PipelineCommander = {
   [P in Exclude<keyof ICommander, "exec">]: ICommander[P] extends (
     ...args: infer U
-  ) => infer R
+  ) => any
     ? (...args: U) => Pipeline
     : ICommander[P];
 };

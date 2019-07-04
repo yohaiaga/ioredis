@@ -341,4 +341,24 @@ export function zipMap<K, V>(keys: K[], values: V[]): Map<K, V> {
   return map;
 }
 
+/**
+ * Apply Mixins
+ *
+ * @link https://www.typescriptlang.org/docs/handbook/mixins.html
+ *
+ * @param derivedCtor
+ * @param baseCtors
+ */
+export function applyMixins(derivedCtor: any, baseCtors: any[]) {
+  baseCtors.forEach(baseCtor => {
+    Object.getOwnPropertyNames(baseCtor.prototype).forEach(name => {
+      Object.defineProperty(
+        derivedCtor.prototype,
+        name,
+        Object.getOwnPropertyDescriptor(baseCtor.prototype, name)
+      );
+    });
+  });
+}
+
 export { Debug, noop, flatten };

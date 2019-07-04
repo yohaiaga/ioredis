@@ -19,6 +19,6 @@ export interface IClusterOfflineQueueItemNode {
 
 export interface IClusterOfflineQueueItem {
   command: ICommand;
-  stream: NetStream;
+  stream: { write: (writable: any) => any };
   node: IClusterOfflineQueueItemNode;
 }

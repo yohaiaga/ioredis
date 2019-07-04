@@ -12,17 +12,17 @@ describe("stringNumbers", function() {
 
       var pending = 0;
 
-      redis.set("foo", MAX_NUMBER);
+      redis.set("foo", String(MAX_NUMBER));
       redis.incr("foo", check("9007199254740992"));
       redis.incr("foo", check("9007199254740993"));
       redis.incr("foo", check("9007199254740994"));
 
       // also works for small interger
-      redis.set("foo", 123);
+      redis.set("foo", String(123));
       redis.incr("foo", check("124"));
 
       // and floats
-      redis.set("foo", 123.23);
+      redis.set("foo", String(123.23));
       redis.incrbyfloat("foo", 1.2, check("124.43"));
 
       function check(expected) {

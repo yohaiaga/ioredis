@@ -1,10 +1,28 @@
 import { wrapMultiResult } from "./utils";
 import asCallback from "standard-as-callback";
-import Pipeline from "./Commander/Pipeline";
+import { Pipeline } from "./Commander/Pipeline";
 import { CallbackFunction } from "./types";
+import { ICommander } from "./ICommander";
+import { Commander } from "./commander";
 
-export function addTransactionSupport(redis) {
-  redis.pipeline = function(commands) {
+interface IMultiOptions {
+  pipeline: boolean;
+}
+
+export interface ITransaction {
+  pipeline(commands?: [keyof ICommander, ...any[]][]): Pipeline;
+  multi(options?: IMultiOptions): Pipeline;
+  multi(
+    commands: [keyof ICommander, ...any[]][],
+    options?: IMultiOptions
+  ): Pipeline;
+  exec(callback?: CallbackFunction): Promise<any>;
+}
+
+export function addTransactionSupport(redis: Commander) {
+  (<any>redis).pipeline = function(
+    commands?: [keyof ICommander, ...any[]][]
+  ): Pipeline {
     const pipeline = new Pipeline(this);
     if (Array.isArray(commands)) {
       pipeline.addBatch(commands);
@@ -12,8 +30,11 @@ export function addTransactionSupport(redis) {
     return pipeline;
   };
 
-  const { multi } = redis;
-  redis.multi = function(commands, options) {
+  const { multi } = <any>redis;
+  (<any>redis).multi = function(
+    commands?: [keyof ICommander, ...any[]][] | null,
+    options?: IMultiOptions
+  ): Pipeline {
     if (typeof options === "undefined" && !Array.isArray(commands)) {
       options = commands;
       commands = null;
@@ -61,13 +82,6 @@ export function addTransactionSupport(redis) {
       );
     };
 
-    const { execBuffer } = pipeline;
-    pipeline.execBuffer = function(callback) {
-      if (this._transactions > 0) {
-        execBuffer.call(pipeline);
-      }
-      return pipeline.exec(callback);
-    };
     return pipeline;
   };
 

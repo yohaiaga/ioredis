@@ -46,8 +46,7 @@ export function connectHandler(self) {
       `Stream#end()` will remove all listeners for us.
     */
     new DataHandler(self, {
-      stringNumbers: self.options.stringNumbers,
-      dropBufferSupport: self.options.dropBufferSupport
+      stringNumbers: self.options.stringNumbers
     });
 
     if (self.options.enableReadyCheck) {
