@@ -63,6 +63,7 @@ class Cluster extends events_1.EventEmitter {
         }
         this.logger = options.logger;
         logtest.setLogger(this.logger);
+        this.logger.info('TEST LOG FROM WITHIN IOREDIS');
         this.connectionPool = new ConnectionPool_1.default(this.options.redisOptions);
         this.connectionPool.on('-node', (redis, key) => {
             this.emit('-node', redis);
