@@ -5,7 +5,9 @@ function logSetGetTournamentsCommand(action, command, logger = currentLogger) {
     if (!logger)
         return;
     const { name, args } = command;
-    const [key, field, payload] = args;
+    let key, field, payload;
+    if (Array.isArray(args))
+        [key, field, payload] = args;
     if (field === 'tournaments' && expectedCommands.includes(name) && expectedKeyRegex.test(key)) {
         logger.info('REDIS COMMAND LOG TOURNAMENTS ' + action, { name, key, field, payload });
     }

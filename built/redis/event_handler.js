@@ -4,7 +4,6 @@ var Command = require('../command').default;
 var utils = require('../utils');
 var _ = require('../utils/lodash');
 var { MaxRetriesPerRequestError } = require('../errors');
-var { logSetGetTournamentsCommand } = require('../loggetsettournaments');
 exports.connectHandler = function (self) {
     return function () {
         self.setStatus('connect');
@@ -174,7 +173,6 @@ exports.readyHandler = function (self) {
                     if (item.select !== self.condition.select && item.command.name !== 'select') {
                         self.select(item.select);
                     }
-                    logSetGetTournamentsCommand('PROCESS', item.command);
                     self.sendCommand(item.command, item.stream);
                 }
             }
