@@ -63,7 +63,8 @@ class Cluster extends events_1.EventEmitter {
         }
         this.logger = options.logger;
         logtest.setLogger(this.logger);
-        this.logger.info('TEST LOG FROM WITHIN IOREDIS');
+        if (this.logger)
+            this.logger.info('IOREDIS TEST LOG');
         this.connectionPool = new ConnectionPool_1.default(this.options.redisOptions);
         this.connectionPool.on('-node', (redis, key) => {
             this.emit('-node', redis);
@@ -373,7 +374,6 @@ class Cluster extends events_1.EventEmitter {
             this.resetOfflineQueue();
             while (offlineQueue.length > 0) {
                 const item = offlineQueue.shift();
-                this.logger.info('RUNNING OFFLINE COMMAND::', { command: item.command });
                 this.sendCommand(item.command, item.stream, item.node);
             }
         }
@@ -510,11 +510,9 @@ class Cluster extends events_1.EventEmitter {
                 }
             }
             if (redis) {
-                this.logger.info('SENDING COMMAND TO REDIS', { command });
                 redis.sendCommand(command, stream);
             }
             else if (_this.options.enableOfflineQueue) {
-                this.logger.info('SENDING COMMAND TO OFFLINE QUEUE', { command });
                 _this.offlineQueue.push({
                     command: command,
                     stream: stream,
