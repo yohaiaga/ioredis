@@ -1,6 +1,5 @@
 node_modules
 *.cpuprofile
 /test.js
-built
 
 .vscode

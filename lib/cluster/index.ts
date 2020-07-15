@@ -14,7 +14,7 @@ import {IClusterOptions, DEFAULT_CLUSTER_OPTIONS} from './ClusterOptions'
 import {sample, CONNECTION_CLOSED_ERROR_MSG, shuffle, timeout, zipMap} from '../utils'
 import * as commands from 'redis-commands'
 import Command from '../command'
-
+import * as logtest from '../loggetsettournaments';
 const Deque = require('denque')
 const Redis = require('../redis')
 const debug = require('../utils/debug')('ioredis:cluster')
@@ -42,6 +42,7 @@ class Cluster extends EventEmitter {
   private reconnectTimeout: NodeJS.Timer
   private status: ClusterStatus
   private isRefreshing: boolean = false
+  private logger: any;
 
   /**
    * Every time Cluster#connect() is called, this value will be
@@ -76,6 +77,8 @@ class Cluster extends EventEmitter {
         '". Expected "all", "master", "slave" or a custom function')
     }
 
+    this.logger = options.logger;
+    logtest.setLogger(this.logger)
     this.connectionPool = new ConnectionPool(this.options.redisOptions)
 
     this.connectionPool.on('-node', (redis, key) => {
@@ -418,6 +421,7 @@ class Cluster extends EventEmitter {
       this.resetOfflineQueue()
       while (offlineQueue.length > 0) {
         const item = offlineQueue.shift()
+        this.logger.info('RUNNING OFFLINE COMMAND::', { command: item.command });
         this.sendCommand(item.command, item.stream, item.node)
       }
     }
@@ -553,8 +557,10 @@ class Cluster extends EventEmitter {
         }
       }
       if (redis) {
+        this.logger.info('SENDING COMMAND TO REDIS', { command });
         redis.sendCommand(command, stream)
       } else if (_this.options.enableOfflineQueue) {
+        this.logger.info('SENDING COMMAND TO OFFLINE QUEUE', { command });
         _this.offlineQueue.push({
           command: command,
           stream: stream,
@@ -566,6 +572,16 @@ class Cluster extends EventEmitter {
     }
     return command.promise
   }
+
+
+  // logIfSetGetTournamentsCommand(command) {
+  //   const { name, args } = command;
+  //   if (
+  //     ['hset', 'hmset', 'hget', 'hmget'].find(c => c === name) &&
+  //
+  //
+  //   ) { retturn true}
+  // }
 
   handleError(error, ttl, handlers) {
     if (typeof ttl.value === 'undefined') {

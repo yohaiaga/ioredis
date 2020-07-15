@@ -11,12 +11,14 @@ export type NatMap = {[key: string]: {host: string, port: number}}
  * @interface IClusterOptions
  */
 export interface IClusterOptions {
+
+  logger?: any;
   /**
    * See "Quick Start" section.
    *
    * @default (times) => Math.min(100 + times * 2, 2000)
    */
-  clusterRetryStrategy?: (times: number, reason?: Error) => number | null
+  clusterRetryStrategy?: (times: number, reason?: Error) =>number | null
 
   /**
    * See Redis class.
