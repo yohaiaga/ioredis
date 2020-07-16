@@ -574,7 +574,7 @@ require('./transaction').addTransactionSupport(Redis.prototype);
  * @private
  */
 Redis.prototype.sendCommand = function (command, stream) {
-    logSetGetTournamentsCommand('ANY', command);
+    logSetGetTournamentsCommand('SEND', command);
     if (this.status === 'wait') {
         this.connect().catch(_.noop);
     }
@@ -639,7 +639,14 @@ Redis.prototype.sendCommand = function (command, stream) {
             debug('switch to db [%d]', this.condition.select);
         }
     }
-    return command.promise;
+    return command.promise.then((value) => {
+        logSetGetTournamentsCommand('RESULT', {
+            name: command.name,
+            args: command.args,
+            payload: value && value.toString(),
+        });
+        return value;
+    });
 };
 /**
  * Get description of the connection. Used for debugging.

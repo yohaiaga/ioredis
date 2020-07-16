@@ -1,4 +1,4 @@
-const expectedCommands = ['hset', 'hmset', 'hget', 'hmget', 'hgetall'];
+const expectedCommands = ['hset', 'hmset'];
 const getCommands = ['hget', 'hset', 'hgetall'];
 const expectedKeyRegex = /events:.*/;
 let currentLogger = null;
@@ -9,14 +9,19 @@ function logSetGetTournamentsCommand(action, command, logger = currentLogger) {
     let key, field, payload;
     if (Array.isArray(args))
         [key, field, payload] = args;
-    if (field === 'tournaments' && expectedCommands.includes(name) && expectedKeyRegex.test(key)) {
-        logger.warn('REDIS COMMAND LOG TOURNAMENTS ' + action, { name, key, field, payload });
+    if (expectedCommands.includes(name) && (field === 'tournaments' || expectedKeyRegex.test(key))) {
+        logger.warn('REDIS COMMAND LOG SET TOURNAMENTS ' + action, { name, key, field, payload });
     }
-    if (getCommands.includes(name)) {
-        logger.warn('REDIS COMMAND LOG GET COMMAND ' + action, { name, key, field, payload, args });
+    if (getCommands.includes(name) && (field === 'tournaments' || expectedKeyRegex.test(key))) {
+        logger.warn('REDIS COMMAND LOG GET COMMAND ' + action, { name, key, field, result: command.payload, args });
     }
 }
 module.exports = {
     logSetGetTournamentsCommand,
-    setLogger: (theLogger) => currentLogger = theLogger,
+    setLogger: (theLogger) => {
+        if (theLogger)
+            currentLogger = theLogger;
+        else
+            console.log('No logger provided');
+    }
 };
