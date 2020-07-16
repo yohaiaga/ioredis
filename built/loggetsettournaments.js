@@ -9,7 +9,7 @@ function logSetGetTournamentsCommand(action, command, logger = currentLogger) {
     if (Array.isArray(args))
         [key, field, payload] = args;
     if (field === 'tournaments' && expectedCommands.includes(name) && expectedKeyRegex.test(key)) {
-        logger.info('REDIS COMMAND LOG TOURNAMENTS ' + action, { name, key, field, payload });
+        logger.warn('REDIS COMMAND LOG TOURNAMENTS ' + action, { name, key, field, payload });
     }
 }
 module.exports = {
