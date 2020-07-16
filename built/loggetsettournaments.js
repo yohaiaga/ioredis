@@ -1,9 +1,9 @@
-const expectedCommands = ['hset', 'hmset', 'hget', 'hmget'];
-const getCommands = ['hget', 'hset'];
+const expectedCommands = ['hset', 'hmset', 'hget', 'hmget', 'hgetall'];
+const getCommands = ['hget', 'hset', 'hgetall'];
 const expectedKeyRegex = /events:.*/;
 let currentLogger = null;
 function logSetGetTournamentsCommand(action, command, logger = currentLogger) {
-    if (!logger)
+    if (!logger || !command)
         return;
     const { name, args } = command;
     let key, field, payload;
