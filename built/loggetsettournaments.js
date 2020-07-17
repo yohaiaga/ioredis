@@ -3,7 +3,6 @@ const getCommands = ['hget', 'hmget', 'hgetall'];
 const expectedKeyRegex = /events:.*/;
 let currentLogger = null;
 function logSetGetTournamentsCommand(action, command, logger = currentLogger) {
-    console.log('REDIS COMMAND LOG' + JSON.stringify({ name: command.name, args: command.args, payload: command.payload }));
     if (!logger || !command)
         return;
     const { name, args } = command;
