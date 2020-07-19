@@ -10,10 +10,10 @@ function logSetGetTournamentsCommand(action, command, logger = currentLogger) {
     if (Array.isArray(args))
         [key, field, payload] = args;
     if (expectedCommands.includes(name) && (field === 'tournaments' || expectedKeyRegex.test(key))) {
-        logger.warn('REDIS COMMAND LOG SET TOURNAMENTS ' + action, { name, key, field, payload });
+        logger.warn('REDIS COMMAND LOG SET TOURNAMENTS ' + action, { name, key, field, payload, now: Date.now() });
     }
     if (getCommands.includes(name) && (field === 'tournaments' || expectedKeyRegex.test(key))) {
-        logger.warn('REDIS COMMAND LOG GET COMMAND ' + action, { name, key, field, result: command.payload, args });
+        logger.warn('REDIS COMMAND LOG GET COMMAND ' + action, { name, key, field, result: command.payload, args, now: Date.now() });
     }
 }
 module.exports = {
