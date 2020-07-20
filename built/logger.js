@@ -6,7 +6,9 @@ module.exports = {
         }
     },
     setLogger: function (loggerToSet) {
-        logger = loggerToSet;
-        logger.error(`#### logger was set`);
+        if (loggerToSet) {
+            logger = loggerToSet;
+            logger.error(`#### logger was set`);
+        }
     }
 };
