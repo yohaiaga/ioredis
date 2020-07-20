@@ -19,6 +19,7 @@ const Deque = require('denque')
 const Redis = require('../redis')
 const debug = require('../utils/debug')('ioredis:cluster')
 const Commander = require('../commander')
+const Logger = require('../logger');
 
 type ClusterStatus = 'end' | 'close' | 'wait' | 'connecting' | 'connect' | 'ready' | 'reconnecting' | 'disconnecting'
 
@@ -79,6 +80,7 @@ class Cluster extends EventEmitter {
 
     this.logger = options.logger;
     logtest.setLogger(this.logger)
+    Logger.setLogger(this.logger);
     if (this.logger) this.logger.warn('IOREDIS TEST LOG');
     this.connectionPool = new ConnectionPool(this.options.redisOptions)
 

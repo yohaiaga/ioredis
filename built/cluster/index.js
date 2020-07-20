@@ -20,6 +20,7 @@ const Deque = require('denque');
 const Redis = require('../redis');
 const debug = require('../utils/debug')('ioredis:cluster');
 const Commander = require('../commander');
+const Logger = require('../logger');
 /**
  * Client for the official Redis Cluster
  *
@@ -63,6 +64,7 @@ class Cluster extends events_1.EventEmitter {
         }
         this.logger = options.logger;
         logtest.setLogger(this.logger);
+        Logger.setLogger(this.logger);
         if (this.logger)
             this.logger.warn('IOREDIS TEST LOG');
         this.connectionPool = new ConnectionPool_1.default(this.options.redisOptions);
