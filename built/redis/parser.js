@@ -4,6 +4,7 @@ var Command = require('../command').default;
 var SubscriptionSet = require('../SubscriptionSet').default;
 var debug = require('../utils/debug')('ioredis:reply');
 var Parser = require('redis-parser');
+const { logData } = require('../logger');
 /**
  * Init the parser
  *
@@ -23,10 +24,14 @@ exports.initParser = function () {
             _this.returnReply(reply);
         },
         returnFatalError: function (err) {
+            logData('start of returnFatalError', err);
             err.message += '. Please report this.';
             _this.flushQueue(err, { offlineQueue: false });
+            logData('after flushQueue of returnFatalError');
             _this.silentEmit('error', err);
+            logData('after silentEmit of returnFatalError');
             _this.disconnect(true);
+            logData('after disconnect of returnFatalError');
         }
     });
 };

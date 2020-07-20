@@ -14,6 +14,7 @@ var ScanStream = require('./ScanStream').default;
 var commands = require('redis-commands');
 var PromiseContainer = require('./promiseContainer');
 const { setLogger, logSetGetTournamentsCommand } = require('./loggetsettournaments');
+const Logger = require('./logger');
 /**
  * Creates a Redis instance
  *
@@ -214,6 +215,7 @@ Redis.defaultOptions = {
 // };
 Redis.prototype.setLogger = function (corelogger) {
     setLogger(corelogger);
+    Logger.setLogger(corelogger);
 };
 Redis.prototype.resetCommandQueue = function () {
     this.commandQueue = new Deque();
@@ -414,8 +416,10 @@ Redis.prototype.flushQueue = function (error, options) {
     var item;
     if (options.offlineQueue) {
         while (this.offlineQueue.length > 0) {
+            Logger.logData('in flushQueue offlineQueue while loop', { size: this.offlineQueue.length });
             item = this.offlineQueue.shift();
             item.command.reject(error);
+            Logger.logData('in flushQueue offlineQueue while loop after reject', { size: this.offlineQueue.length });
         }
     }
     if (options.commandQueue) {
@@ -424,8 +428,10 @@ Redis.prototype.flushQueue = function (error, options) {
                 this.stream.removeAllListeners('data');
             }
             while (this.commandQueue.length > 0) {
+                Logger.logData('in flushQueue commandQueue while loop', { size: this.commandQueue.length });
                 item = this.commandQueue.shift();
                 item.command.reject(error);
+                Logger.logData('in flushQueue commandQueue while loop after reject', { size: this.commandQueue.length });
             }
         }
     }
