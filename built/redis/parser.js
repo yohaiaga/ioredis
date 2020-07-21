@@ -26,7 +26,7 @@ exports.initParser = function () {
         returnFatalError: function (err) {
             logData('exit on redis fatal error, process id' + process.pid);
             logData('start of returnFatalError', err);
-            process.exit(10);
+            //process.exit(10);
             err.message += '. Please report this.';
             _this.flushQueue(err, { offlineQueue: false });
             logData('after flushQueue of returnFatalError');
